@@ -1,0 +1,93 @@
+mkdir mpi4py
+cd mpi4py
+
+module load Python/2.6.4-ictce-3.2.1.015.u4
+
+version=1.2.1
+wget http://mpi4py.googlecode.com/files/mpi4py-$version.tar.gz
+tar xzf mpi4py-$version.tar.gz 
+cd mpi4py-$version
+
+#python setup.py build --mpicc=`which mpiicc`
+
+
+
+cat >> mpi.cfg <<EOF
+[impi]
+mpi_dir              = $I_MPI_ROOT
+mpicc                = %(mpi_dir)s/bin64/mpiicc
+mpicxx               = %(mpi_dir)s/bin64/mpiicpc
+library_dirs         = %(mpi_dir)s/lib64
+runtime_library_dirs = %(mpi_dir)s/lib64
+include_dirs         = %(mpi_dir)s/include64
+
+EOF
+
+## if not: you get all kinds of undefined references to eg intel_memfstcpy etc etc
+python setup.py build --mpi=impi
+
+python setup.py install --home=$HOME/mpi4py/
+
+
+--- src/MPI/Comm.pyx.orig   2010-04-29 15:50:19.332105000 +0200
++++ src/MPI/Comm.pyx    2010-04-30 00:05:20.516577000 +0200
+@@ -146,6 +146,40 @@
+             rmsg.buf, rmsg.count, rmsg.dtype,
+             source, tag, self.ob_mpi, statusp) )
+ 
++
++
++    def PingpongSR(self, rbuf,sbuf, int rsource=0,int sdest=0, int rtag = 0,int stag=0, int num=1, Status rstatus=None):
++        cdef _p_msg_p2p rmsg = message_p2p_recv(rbuf, rsource)
++        cdef MPI_Status *rstatusp = arg_Status(rstatus)
++        cdef _p_msg_p2p smsg = message_p2p_send(sbuf, sdest)
++        cdef int i = 0
++        cdef double start = MPI_Wtime()
++        for i from 0 <= i < num:
++            with nogil: CHKERR( MPI_Send(
++                smsg.buf, smsg.count, smsg.dtype,
++                sdest, stag, self.ob_mpi) )
++            with nogil: CHKERR( MPI_Recv(
++                rmsg.buf, rmsg.count, rmsg.dtype,
++                rsource, rtag, self.ob_mpi, rstatusp) )
++        cdef double end = MPI_Wtime()
++        return (start,end)
++
++    def PingpongRS(self, rbuf, sbuf, int rsource=0, int sdest=0, int rtag=0,int stag=0, int num=1, Status rstatus=None):
++        cdef _p_msg_p2p rmsg = message_p2p_recv(rbuf, rsource)
++        cdef MPI_Status *rstatusp = arg_Status(rstatus)
++        cdef _p_msg_p2p smsg = message_p2p_send(sbuf, sdest)
++        cdef int i = 0
++        cdef double start = MPI_Wtime()
++        for i from 0 <= i < num:
++            with nogil: CHKERR( MPI_Recv(
++                rmsg.buf, rmsg.count, rmsg.dtype,
++                rsource, rtag, self.ob_mpi, rstatusp) )
++            with nogil: CHKERR( MPI_Send(
++                smsg.buf, smsg.count, smsg.dtype,
++                sdest, stag, self.ob_mpi) )
++        cdef double end = MPI_Wtime()
++        return (start,end)
++
+     # Send-Receive
+     # ------------
+ 
+
+
+
+
+############################################################################
+
+module load Python/2.6.4-ictce-3.2.1.015.u4
+
+name=psyco-`date +%Y%m%d_%H%M%S`
+svn co http://codespeak.net/svn/psyco/dist/ $name 
+cd $name
+
+export CC=icc
+python setup.py build --compiler=unix
+
+--> fails with "doesn't work on 64bit"
+
+
+
