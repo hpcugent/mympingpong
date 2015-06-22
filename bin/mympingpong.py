@@ -48,6 +48,17 @@ import numpy as n
     
 from vsc.mympingpong.log import initLog,setdebugloglevel
 
+scratch = None
+
+try:
+    if 'VSC_SCRATCH' in os.environ:
+        scratch = os.environ['VSC_SCRATCH']
+    else:
+        raise IOError('VSC_SCRATCH is not set')
+except IOError as err:
+    print str(err)
+    sys.exit(3)
+
 class pingpong_sr:
     """
     Define real work
@@ -568,15 +579,7 @@ if __name__ == '__main__':
     setdebugloglevel(debug)
 
     m=mypingpong()
-    try:
-        if os.environ.get('VSC_SCRATCH') == None:
-            raise IOError('VSC_SCRATCH is not set correctly')
-        else:
-            fn=os.path.join(os.environ['VSC_SCRATCH'],fnb)
-    except IOError as err:
-        print str(err)
-        sys.exit(3)
-
+    fn=os.path.join(scratch,fnb)
     m.setfn(fn)
     if group == 'incl':
         m.setpairmode(rngfilter=group)

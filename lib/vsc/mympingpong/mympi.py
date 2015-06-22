@@ -355,7 +355,7 @@ if __name__ == '__main__':
 
     try:
         if os.environ.get('VSC_SCRATCH') == None:
-            raise IOError('VSC_SCRATCH is not set correctly')
+            raise IOError('VSC_SCRATCH is not set')
         else:
             fn=os.path.join(os.environ['VSC_SCRATCH'],'test2')
     except IOError as err:
