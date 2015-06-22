@@ -39,7 +39,7 @@ import sys,os,re,copy
 
 import numpy as n
     
-from vsc.mympinpong.log import initLog,setdebugloglevel
+from vsc.mympingpong.log import initLog,setdebugloglevel
 
 class pair:
     def __init__(self,rng=None,seed=None,id=None):

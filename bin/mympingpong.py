@@ -269,7 +269,7 @@ class mypingpong(mympi):
         if not os.path.exists(exe):
             self.log.error("hwlocmap: Can't find exe %s"%exe)
             
-        cmd="%s %s"%(exe,xmlout)
+        cmd="%s --output-format xml %s"%(exe,xmlout)
         ec,txt=self.runrun(cmd,True)
 
         ## parse xmloutput

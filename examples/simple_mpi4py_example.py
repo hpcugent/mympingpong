@@ -16,7 +16,7 @@ recv=comm.alltoall(send)
 
 import time
 
-sleep(rank*3)
+time.sleep(rank*3)
 
 print rank,send,recv
 
