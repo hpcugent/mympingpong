@@ -45,6 +45,20 @@ import array
 from vsc.mympingpong.log import initLog,setdebugloglevel
 
 
+
+def getShared():
+    """
+    returns path to a shared directory
+    will return None if 'VSC_SCRATCH is not set'
+    """
+
+    if 'VSC_SCRATCH' in os.environ:
+        scratch = os.environ['VSC_SCRATCH']
+    else:
+        return None
+    
+    return scratch
+
 class mympi:
     def __init__(self,nolog=True,serial=False):
         if not nolog:
@@ -353,14 +367,7 @@ if __name__ == '__main__':
 
     m=mympi(serial=serial)
 
-    try:
-        if os.environ.get('VSC_SCRATCH') == None:
-            raise IOError('VSC_SCRATCH is not set')
-        else:
-            fn=os.path.join(os.environ['VSC_SCRATCH'],'test2')
-    except IOError as err:
-        print str(err)
-        sys.exit(3)
+    fn=os.path.join(getshared(),'test2')
 
     m.setfn(fn)
 

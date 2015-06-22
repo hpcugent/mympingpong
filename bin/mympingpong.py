@@ -39,7 +39,7 @@ TODO:
 import sys,os,re
 
 try:
-    from vsc.mympingpong.mympi import mympi
+    from vsc.mympingpong.mympi import mympi,getShared
 except Exception, err:
     print "Can't load mympi: %s"%err
     sys.exit(1)
@@ -47,17 +47,6 @@ except Exception, err:
 import numpy as n
     
 from vsc.mympingpong.log import initLog,setdebugloglevel
-
-scratch = None
-
-try:
-    if 'VSC_SCRATCH' in os.environ:
-        scratch = os.environ['VSC_SCRATCH']
-    else:
-        raise IOError('VSC_SCRATCH is not set')
-except IOError as err:
-    print str(err)
-    sys.exit(3)
 
 class pingpong_sr:
     """
@@ -579,7 +568,7 @@ if __name__ == '__main__':
     setdebugloglevel(debug)
 
     m=mypingpong()
-    fn=os.path.join(scratch,fnb)
+    fn=os.path.join(getShared(),fnb)
     m.setfn(fn)
     if group == 'incl':
         m.setpairmode(rngfilter=group)
