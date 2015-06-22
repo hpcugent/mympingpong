@@ -568,7 +568,15 @@ if __name__ == '__main__':
     setdebugloglevel(debug)
 
     m=mypingpong()
-    fn=os.path.join(os.environ['VSC_SCRATCH'],fnb)
+    try:
+        if os.environ.get('VSC_SCRATCH') == None:
+            raise IOError('VSC_SCRATCH is not set correctly')
+        else:
+            fn=os.path.join(os.environ['VSC_SCRATCH'],fnb)
+    except IOError as err:
+        print str(err)
+        sys.exit(3)
+
     m.setfn(fn)
     if group == 'incl':
         m.setpairmode(rngfilter=group)
