@@ -44,12 +44,12 @@ import array
     
 from vsc.mympingpong.log import initLog,setdebugloglevel
 
-
-
 def getShared():
     """
     returns path to a shared directory
-    will return None if 'VSC_SCRATCH is not set'
+   
+    Returns:
+    will return None if 'VSC_SCRATCH' is not set
     """
     
     shared = 'VSC_SCRATCH'
@@ -57,7 +57,7 @@ def getShared():
     if shared in os.environ:
         scratch = os.environ[shared]
     else:
-        self.log.error("%s is not set"%shared)
+        print 'WARNING: ' + shared + ' is not set'
         return None
     
     return scratch
@@ -100,7 +100,6 @@ class mympi:
         
         ## a bit silly with masterraank set here
         self.masterorslave()
-
 
     def setfn(self,fn,remove=True):
         self.fn=fn
