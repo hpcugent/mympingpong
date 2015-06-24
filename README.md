@@ -23,9 +23,9 @@ DEPENDENCIES
 
 (including but not limited to)
 
- -numpy
- -vsc-base 
- -matplotlib
+ - numpy
+ - vsc-base 
+ - matplotlib
 
 
 Results
