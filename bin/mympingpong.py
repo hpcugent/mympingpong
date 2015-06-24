@@ -301,11 +301,12 @@ class mypingpong(mympi):
             self.log.error("Something is not correct here. Some sockets have more cores then others. %s"%map)
 
 
-        crps=x[0]
-        for sk,crs in map.items():
-            for cr,pus in crs.items():
-                for pu in pus:
-                    cr2="%s"%(int(sk)*crps+int(pu))
+        crps=x[0]                           #cores per socket
+        for sk,crs in map.items():          #sk = socket-id, crs = list of cores in socket
+            for cr,pus in crs.items():      #cr = core-id, pus = list of PU's in core
+                for pu in pus:              #pu = pu-id
+                    #absolute PU id = (socket id * cores per socket * PU's in core) + PU id
+                    cr2="%s"%(int(sk)*crps*len(pus)+int(pu))
                     #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
                     t="socket %s core %s abscore %s"%(sk,cr,cr2)
                     res[cr2]=t
