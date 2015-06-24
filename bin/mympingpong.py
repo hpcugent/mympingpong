@@ -295,9 +295,6 @@ class mypingpong(mympi):
                             if pu.getAttribute('type') == 'PU':
                                 puid=pu.getAttribute('os_index')
                                 map[skid][crid].append(puid)
-
-        print 'POEFTRACE hwlocmap map: '
-        print map
         ## sanity check
         x=[len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
@@ -306,27 +303,14 @@ class mypingpong(mympi):
 
         crps=x[0]
         for sk,crs in map.items():
-            print 'POEFTRACE hwlocmap sk,crs: '
-            print sk
-            print crs
             for cr,pus in crs.items():
-                print 'POEFTRACE hwlocmap cr,pus: '
-                print cr
-                print pus
                 for pu in pus:
-                    print 'POEFTRACE hwlocmap pu: '
-                    print pu
                     cr2="%s"%(int(sk)*crps+int(pu))
-                    print 'POEFTRACE hwlocmap cr2: '
-                    print cr2
                     #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
                     t="socket %s core %s abscore %s"%(sk,cr,cr2)
                     res[cr2]=t
         
         self.log.debug("hwlocmap: result map: %s"%res)
-
-        print 'POEFTRACE hwlocmap res'
-        print res
         return res
 
 
