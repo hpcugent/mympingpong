@@ -39,7 +39,7 @@ TODO:
 import sys,os,re
 
 try:
-    from vsc.mympingpong.mympi import mympi,getShared
+    from vsc.mympingpong.mympi import mympi
 except Exception, err:
     print "Can't load mympi: %s"%err
     sys.exit(1)
@@ -279,7 +279,7 @@ class mypingpong(mympi):
 
         sks=doc.getElementsByTagName('object')
         map={}
-        for sk in sks:
+        for sk in sks: #TODO fix dit
             if sk.getAttribute('type') == 'Socket':
                 skid=sk.getAttribute('os_index')
                 if not map.has_key(skid):
@@ -319,7 +319,7 @@ class mypingpong(mympi):
             self.log.error("hwlocmap: Can't find exe %s"%exe)
             
         cmd="%s --no-useless-caches"%exe
-        ec,txt=self.runrun(cmd,True)
+        ec,txt=self.runrun(cmd,True) #TODO vsc-base run
         
         """                                                                     
         0.9.1                                                                   
@@ -386,6 +386,19 @@ class mypingpong(mympi):
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s"%(pairmode,rngfilter,mapfilter))
     
     def runpingpong(self,seed=None,msgsize=1024,iter=None,nr=None,barrier=True):
+        """Run PingPong
+
+        Arguments:
+        seed: a seed for the random number generator, should be an int.
+        msgsize: size of the data that will be sent between pairs
+        iter: amount of times a pair will 
+        nr:
+        barrier:
+
+        Returns:
+        nothing, but will write output to a file defined by the -f parameter.
+        """
+
         ## highest precision mode till now. has 25 internal grouped tests
         pmode='fast2'
         barrier2=False
@@ -473,10 +486,24 @@ class mypingpong(mympi):
 
 
     def pingpong(self,p1,p2,pmode='fast2',dat=None,iter=20,barrier=True,dummyfirst=False,test=False):
+
+        """Pingpong between pairs
+
+        Arguments:
+        p1: pair 1
+        p2: pair 2
+        pmode: which pingpongmode is used eg. fastu10, fast2 (default: fast2)
+        dat: the data that is being sent
+        iter: amount of pingpongs between p1 & p2 (default: 20)
+        barrier: if true, wait until every action in a set is finished before starting the next set
+        dummyfirst: if true, do a dummyrun before pingponging $iter times
+        test: use pingpongtest()
+
+        Returns:
+        timing: a list wich contains an average time, a starttime and an endtime
+        details: a dictionary with the pp.group, pp.number and pp.builtindummyfirst
         """
-        Pingpong from p1 to p2 with iter identical msgs dat
-        - returns timing
-        """
+
         details={'ppdummyfirst':dummyfirst,
                  'ppmode':pmode,
                  'ppgroup':None,
@@ -538,6 +565,8 @@ class mypingpong(mympi):
         return timing,details
 
 if __name__ == '__main__':
+
+    from vsc.mympingpong.mympi import getShared
     import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dm:i:n:g:f:")

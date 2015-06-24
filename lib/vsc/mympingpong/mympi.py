@@ -51,10 +51,13 @@ def getShared():
     returns path to a shared directory
     will return None if 'VSC_SCRATCH is not set'
     """
+    
+    shared = 'VSC_SCRATCH'
 
-    if 'VSC_SCRATCH' in os.environ:
-        scratch = os.environ['VSC_SCRATCH']
+    if shared in os.environ:
+        scratch = os.environ[shared]
     else:
+        self.log.error("%s is not set"%shared)
         return None
     
     return scratch
@@ -303,7 +306,7 @@ class mympi:
         
         return alldata
 
-    def runrun(self,cmd,returnout=False):
+    def runrun(self,cmd,returnout=False): #TODO replace with from vsc.utils.run import simple_run
         import time
         if sys.version_info[1] < 6:
             import popen2
@@ -367,7 +370,7 @@ if __name__ == '__main__':
 
     m=mympi(serial=serial)
 
-    fn=os.path.join(getshared(),'test2')
+    fn=os.path.join(getShared(),'test2')
 
     m.setfn(fn)
 
@@ -378,7 +381,3 @@ if __name__ == '__main__':
         m.write(data*250)
         m.comm.Barrier()
         m.read()
-
-    
-
-    
