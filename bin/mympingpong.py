@@ -251,6 +251,7 @@ class mypingpong(mympi):
             self.log.error("No single proc found. Was pinning enabled? (taskset: %s)"%out)
 
         hwlocmap=self.hwlocmap()
+        print hwlocmap
         try:
             prop=hwlocmap[myproc]
         except Exception,err:
@@ -597,7 +598,7 @@ if __name__ == '__main__':
     setdebugloglevel(debug)
 
     m=mypingpong()
-    
+
     try:
         fn=os.path.join(getShared(),fnb)
     except IOError as err:

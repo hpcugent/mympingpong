@@ -58,7 +58,6 @@ def getShared():
         scratch = os.environ[shared]
     else:
         raise IOError('WARNING: ' + shared + ' is not set')
-        return None
     
     return scratch
 
