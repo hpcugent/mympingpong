@@ -290,25 +290,43 @@ class mypingpong(mympi):
                     if cr.getAttribute('type') == 'Core':
                         crid=cr.getAttribute('os_index')
                         pus=cr.getElementsByTagName('object')
+                        map[skid][crid]=[]
                         for pu in pus:
                             if pu.getAttribute('type') == 'PU':
                                 puid=pu.getAttribute('os_index')
-                                map[skid][crid]=puid
+                                map[skid][crid].append(puid)
 
+        print 'POEFTRACE hwlocmap map: '
+        print map
         ## sanity check
         x=[len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
             self.log.error("Something is not correct here. Some sockets have more cores then others. %s"%map)
 
+
         crps=x[0]
         for sk,crs in map.items():
-            for cr,pu in crs.items():
-                cr2="%s"%(int(sk)*crps+int(cr))
-                #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
-                t="socket %s core %s abscore %s"%(sk,cr,cr2)
-                res[cr2]=t
+            print 'POEFTRACE hwlocmap sk,crs: '
+            print sk
+            print crs
+            for cr,pus in crs.items():
+                print 'POEFTRACE hwlocmap cr,pus: '
+                print cr
+                print pus
+                for pu in pus:
+                    print 'POEFTRACE hwlocmap pu: '
+                    print pu
+                    cr2="%s"%(int(sk)*crps+int(pu))
+                    print 'POEFTRACE hwlocmap cr2: '
+                    print cr2
+                    #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
+                    t="socket %s core %s abscore %s"%(sk,cr,cr2)
+                    res[cr2]=t
         
         self.log.debug("hwlocmap: result map: %s"%res)
+
+        print 'POEFTRACE hwlocmap res'
+        print res
         return res
 
 
@@ -418,6 +436,8 @@ class mypingpong(mympi):
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         map=self.makemap()
+        print 'POEFTRACE runpingpong map: '
+        print map
         if self.master:
             self.log.info("runpingpong: making map finished")
         
@@ -566,7 +586,6 @@ class mypingpong(mympi):
         return timing,details
 
 if __name__ == '__main__':
-
     import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dm:i:n:g:f:")
@@ -601,6 +620,7 @@ if __name__ == '__main__':
     try:
         fn=os.path.join(getshared(),fnb)
     except KeyError as err:
+        #TODO: replace prints with fancylogger
         print str(err) + 'is not set'
         sys.exit(3) 
 
