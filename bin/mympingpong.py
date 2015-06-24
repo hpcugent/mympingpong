@@ -39,7 +39,7 @@ TODO:
 import sys,os,re
 
 try:
-    from vsc.mympingpong.mympi import mympi
+    from vsc.mympingpong.mympi import mympi,getShared
 except Exception, err:
     print "Can't load mympi: %s"%err
     sys.exit(1)
@@ -279,7 +279,8 @@ class mypingpong(mympi):
 
         sks=doc.getElementsByTagName('object')
         map={}
-        for sk in sks: #TODO fix dit
+        #TODO fix xml parsing
+        for sk in sks:
             if sk.getAttribute('type') == 'Socket':
                 skid=sk.getAttribute('os_index')
                 if not map.has_key(skid):
@@ -391,10 +392,10 @@ class mypingpong(mympi):
         Arguments:
         seed: a seed for the random number generator, should be an int.
         msgsize: size of the data that will be sent between pairs
-        iter: amount of times a pair will 
-        nr:
-        barrier:
-
+        iter: amount of times a pair will send and receive from eachother
+        nr: 
+        barrier: if true, wait until every action in a set is finished before starting the next set
+        
         Returns:
         nothing, but will write output to a file defined by the -f parameter.
         """
@@ -566,7 +567,6 @@ class mypingpong(mympi):
 
 if __name__ == '__main__':
 
-    from vsc.mympingpong.mympi import getShared
     import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dm:i:n:g:f:")
@@ -597,7 +597,12 @@ if __name__ == '__main__':
     setdebugloglevel(debug)
 
     m=mypingpong()
-    fn=os.path.join(getShared(),fnb)
+    
+    try:
+        fn=os.path.join(getShared(),fnb)
+    except IOError as err:
+        self.log.error(err)  
+
     m.setfn(fn)
     if group == 'incl':
         m.setpairmode(rngfilter=group)

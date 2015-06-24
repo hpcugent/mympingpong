@@ -57,7 +57,7 @@ def getShared():
     if shared in os.environ:
         scratch = os.environ[shared]
     else:
-        print 'WARNING: ' + shared + ' is not set'
+        raise IOError('WARNING: ' + shared + ' is not set')
         return None
     
     return scratch
@@ -369,7 +369,10 @@ if __name__ == '__main__':
 
     m=mympi(serial=serial)
 
-    fn=os.path.join(getShared(),'test2')
+    try:
+        fn=os.path.join(getShared(),'test2')
+    except IOError as err:
+        self.log.error(err)        
 
     m.setfn(fn)
 
