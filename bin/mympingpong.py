@@ -39,7 +39,7 @@ TODO:
 import sys,os,re
 
 try:
-    from vsc.mympingpong.mympi import mympi,getShared
+    from vsc.mympingpong.mympi import mympi,getshared
 except Exception, err:
     print "Can't load mympi: %s"%err
     sys.exit(1)
@@ -599,9 +599,10 @@ if __name__ == '__main__':
     m=mypingpong()
     
     try:
-        fn=os.path.join(getShared(),fnb)
-    except IOError as err:
-        self.log.error(err)  
+        fn=os.path.join(getshared(),fnb)
+    except KeyError as err:
+        print str(err) + 'is not set'
+        sys.exit(3) 
 
     m.setfn(fn)
     if group == 'incl':

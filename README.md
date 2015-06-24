@@ -23,9 +23,9 @@ DEPENDENCIES
 
 (including but not limited to)
 
- - numpy
- - vsc-base 
- - matplotlib
+ - numpy >= 1.8.2
+ - vsc-base >= 1.8.6
+ - matplotlib >= 1.3.1
 
 
 Results
