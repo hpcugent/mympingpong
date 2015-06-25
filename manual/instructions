@@ -1,9 +1,9 @@
 REQUIRED ENVIRONMENT VARIABLES
 ==============================
 
-PATH 			should point to ~/.local/bin
-PYTHONPATH 		should point to /patchedmpi4py/lib/python
-VSC_SCRATCH 	should point to a directory such as /tmp
+PATH 			should point to ~/.local/bin					
+PYTHONPATH 		should point to /patchedmpi4py/lib/python 		
+VSC_SCRATCH 	should point to a directory such as /tmp		
 LOADEDMODULES 	should not be empty
 
 
@@ -19,3 +19,11 @@ COMMAND SYNTAX
 -f [DEST] 		is the destination of the outputfile to which data, used for mympingponganalysis, will be written
 -i [ITERATIONS]	is the amount of iterations that a pair of cores will ping and pong
 -n [NUMBER] 	is the amount of pairs that will be made with the available cores
+
+
+COPYPASTE LOLOL
+===============
+export PATH=$PATH:~/.local/bin
+export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
+export VSC_SCRATCH=/tmp
+export LOADEDMODULES=abc
