@@ -40,7 +40,7 @@ import sys,os,re
 
 try:
     from vsc.mympingpong.mympi import mympi,getshared
-except Exception, err:
+except Exception as err:
     print "Can't load mympi: %s"%err
     sys.exit(1)
     
@@ -64,7 +64,7 @@ class pingpong_sr:
         try:
             global wtime
             from mpi4py.MPI import Wtime as wtime
-        except Exception,err:
+        except Exception as err:
             pass
 
         self.sndbuf=None
@@ -253,7 +253,7 @@ class mypingpong(mympi):
         hwlocmap=self.hwlocmap()
         try:
             prop=hwlocmap[myproc]
-        except Exception,err:
+        except Exception as err:
             self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s"%(hwlocmap,err))
 
         pc="core_%s"%myproc
@@ -444,7 +444,7 @@ class mypingpong(mympi):
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
-        except Exception, err:
+        except Exception as err:
             self.log.error("Failed to create pair instance %s: %s"%(pairmode, err))
         
         #pair.addmap(map,'incl','^hwloc')
@@ -538,7 +538,7 @@ class mypingpong(mympi):
 
         try:
             exec(exe)
-        except Exception, err:
+        except Exception as err:
             self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s"%(pmode,test,exe,err))
 
         pp.setdat(dat)

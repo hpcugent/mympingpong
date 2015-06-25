@@ -5,7 +5,6 @@ from vsc.mympingpong.mympi import getshared
 
 
 class MyMPITest(TestCase):
-
     """ Tests for mympi.py """
 
     def setUp(self):

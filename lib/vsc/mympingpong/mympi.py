@@ -67,7 +67,7 @@ class mympi:
         try:
             global n
             import numpy as n
-        except Exception, err:
+        except Exception as err:
             self.log.error("Can't load module numpy: %s" % err)
 
         self.serial = False
@@ -82,7 +82,7 @@ class mympi:
             try:
                 global MPI
                 from mpi4py import MPI
-            except Exception, err:
+            except Exception as err:
                 self.log.error("Can't load module MPI: %s" % err)
 
             self.comm = MPI.COMM_WORLD
@@ -103,7 +103,7 @@ class mympi:
             if remove and os.path.exists(self.fn):
                 try:
                     MPI.File.Delete(fn)
-                except Exception, err:
+                except Exception as err:
                     self.log.error("Failed to delete file %s: %s" % (fn, err))
 
     def setseed(self, seed=None):
@@ -159,7 +159,7 @@ class mympi:
         """
         try:
             return zlib.compress(cPickle.dumps(obj, cPickle.HIGHEST_PROTOCOL), 9)
-        except Exception, err:
+        except Exception as err:
             self.log.error("zdumps: failed dump: %s" % (err))
 
     def zloads(self, zstr):
@@ -168,7 +168,7 @@ class mympi:
         """
         try:
             return cPickle.loads(zlib.decompress(zstr))
-        except Exception, err:
+        except Exception as err:
             self.log.error("zloads: failed load: %s" % (err))
 
     def calcmasteroffset(self, ranks=None):
@@ -240,7 +240,7 @@ class mympi:
             fh.Write(towrite)
 
             fh.Close()
-        except Exception, err:
+        except Exception as err:
             self.log.error("Failed to open file %s: %s" % (fn, err))
 
         self.log.debug("write data: %s" % (towrite))
@@ -252,7 +252,7 @@ class mympi:
                 fh.seek(offset)
                 txt = fh.read(bytestoread)
                 fh.close()
-            except Exception, err:
+            except Exception as err:
                 self.log.error(
                     "Read serial: failed to open file %s: %s" % (fn, err))
         else:
@@ -264,7 +264,7 @@ class mympi:
                 res = fh.Read_all(buf)
                 fh.Close()
                 txt = buf.tostring()
-            except Exception, err:
+            except Exception as err:
                 self.log.error(
                     "Read parallel: failed to open file %s: %s" % (fn, err))
 
@@ -328,7 +328,7 @@ class mympi:
 
             ec = os.WEXITSTATUS(ec)
             out += p.fromchild.read()
-        except Exception, err:
+        except Exception as err:
             self.log.error(
                 "Something went wrong with forking cmd %s: %s" % (cmd, err))
 
