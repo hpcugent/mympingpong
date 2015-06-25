@@ -1,22 +1,39 @@
+git clone https://github.ugent.be/hpcugent/mympingpong.git
+
 mkdir mpi4py
-cd mpi4py
+module load Python/2.7.9-intel-2015a 
 
-module load Python/2.6.4-ictce-3.2.1.015.u4
-
-version=1.2.1
+version=1.3.1
 # downloads https://bitbucket.org/mpi4py/mpi4py/downloads
 wget http://mpi4py.googlecode.com/files/mpi4py-$version.tar.gz
 tar xzf mpi4py-$version.tar.gz
 cd mpi4py-$version
 
-## for MPICH
 
 # apply patch
-patch -p0 < /path/to/pingpong_general_fixed_unroll.pyx.patch
+patch -p0 < ../mympingpong/install_manual/pingpong_general_fixed_unroll.pyx.patch 
 
 python setup.py -v clean build_src --force
 
-python setup.py build --mpi=mpich1
+## for MPICH
+
+	python setup.py build --mpi=mpich1
+
+# FOR INTEL
+
+	cat >> mpi.cfg <<EOF
+	[impi]
+	mpi_dir              = $I_MPI_ROOT
+	mpicc                = %(mpi_dir)s/bin64/mpiicc
+	mpicxx               = %(mpi_dir)s/bin64/mpiicpc
+	library_dirs         = %(mpi_dir)s/lib64
+	runtime_library_dirs = %(mpi_dir)s/lib64
+	include_dirs         = %(mpi_dir)s/include64
+
+	EOF
+
+	python setup.py build --mpicc=`which mpiicc`
+
 
 python setup.py install --home=/path/to/newmpi4py/
 
@@ -24,28 +41,14 @@ python setup.py install --home=/path/to/newmpi4py/
 export PYTHONPATH=/path/to/newmpi4py/lib64/python
 python -c 'from mpi4py import MPI;print MPI.__file__;comm=MPI.COMM_WORLD;print [x for x in dir(comm) if x.startswith("Pingpong")]'
 
+
+
+
 ## Test mympingpong with
 # python setup.py install --user
 # if ~/.local/bin in PATH:
 # mpirun -np 1 taskset -c 0 mympingpong
 
-
-# FOR INTEL
-
-#python setup.py build --mpicc=`which mpiicc`
-
-
-
-cat >> mpi.cfg <<EOF
-[impi]
-mpi_dir              = $I_MPI_ROOT
-mpicc                = %(mpi_dir)s/bin64/mpiicc
-mpicxx               = %(mpi_dir)s/bin64/mpiicpc
-library_dirs         = %(mpi_dir)s/lib64
-runtime_library_dirs = %(mpi_dir)s/lib64
-include_dirs         = %(mpi_dir)s/include64
-
-EOF
 
 ## if not: you get all kinds of undefined references to eg intel_memfstcpy etc etc
 python setup.py build --mpi=impi
