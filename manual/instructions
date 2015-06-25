@@ -1,0 +1,14 @@
+PATH should point to ~/.local/bin
+PYTHONPATH should point to /patchedmpi4py/lib/python
+VSC_SCRATCH should point to a directory such as /tmp
+LOADEDMODULES should not be empty
+
+command syntax
+[MYMPI] -S [???] -h [CORES] mympingpong -f [DEST] -i [ITERATIONS] -n [NUMBER]
+
+MYMPI is the mympi wrapper that has been chosen and correctly installed/set in mpi4py/mpi.cfg
+??? is ???
+CORES is the amount of cores that will be tested upon
+DEST is the destination of the outputfile to which data, used for mympingponganalysis, will be written
+ITERATIONS is the amount of iterations that a pair of cores will ping and pong
+NUMBER is the amount of pairs that will be made with the available cores

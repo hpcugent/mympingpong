@@ -1,9 +1,12 @@
 import os
-
-from vsc.mympingpong.mympi import getshared
 from unittest import TestCase, TestLoader, main
 
-class MyMpiTest(TestCase):
+from vsc.mympingpong.mympi import getshared
+
+
+class MyMPITest(TestCase):
+
+    """ Tests for mympi.py """
 
     def setUp(self):
         self.shared = os.environ['VSC_SCRATCH']
@@ -12,13 +15,13 @@ class MyMpiTest(TestCase):
         os.environ['VSC_SCRATCH'] = self.shared
 
     def test_getshared(self):
-
         os.environ['VSC_SCRATCH'] = "/tmp"
         self.assertEqual(getshared(), "/tmp")
 
         del os.environ['VSC_SCRATCH']
         with self.assertRaises(KeyError):
             getshared()
+
 
 def suite():
     """ returns all the testcases in this module """
