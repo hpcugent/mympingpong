@@ -1,11 +1,13 @@
-git clone https://github.ugent.be/hpcugent/mympingpong.git
+git clone git@github.ugent.be:hpcugent/mympingpong.git
+
+module load Python/2.7.9-intel-2015a 
+module load vsc-mympirun/3.4.2
 
 mkdir mpi4py
-module load Python/2.7.9-intel-2015a 
 
 version=1.3.1
 # downloads https://bitbucket.org/mpi4py/mpi4py/downloads
-wget http://mpi4py.googlecode.com/files/mpi4py-$version.tar.gz
+wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-$version.tar.gz
 tar xzf mpi4py-$version.tar.gz
 cd mpi4py-$version
 
@@ -21,7 +23,12 @@ python setup.py -v clean build_src --force
 
 # FOR INTEL
 
+
+
 	cat >> mpi.cfg <<EOF
+
+	# Intel MPI
+	# ---------
 	[impi]
 	mpi_dir              = $I_MPI_ROOT
 	mpicc                = %(mpi_dir)s/bin64/mpiicc
@@ -35,7 +42,7 @@ python setup.py -v clean build_src --force
 	python setup.py build --mpicc=`which mpiicc`
 
 
-python setup.py install --home=/path/to/newmpi4py/
+python setup.py install --home=../mpi4py
 
 # test with
 export PYTHONPATH=/path/to/newmpi4py/lib64/python

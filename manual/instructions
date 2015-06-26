@@ -21,7 +21,7 @@ COMMAND SYNTAX
 -n [NUMBER] 	is the amount of pairs that will be made with the available cores
 
 
-COPYPASTE LAPTOP
+EXPORTS LAPTOP
 ================
 export PATH=$PATH:~/.local/bin
 export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
@@ -29,11 +29,16 @@ export VSC_SCRATCH=/tmp
 export LOADEDMODULES=abc
 
 
-COPYPASTE MUK
+EXPORTS MUK
 =============
-export PYTHONPATH=/gpfs/scratch/users/vsc415/vsc41588/mpi4py
 
 export PYTHONPATH=/gpfs/scratch/apps/develop/software/vsc-mympirun/3.4.2/lib/:~/.local/lib/python2.7/site-packages/:/gpfs/scratch/users/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
+
+
+EXPORTS DELCATTY
+==================
+
+export PYTHONPATH=/apps/gent/SL6/sandybridge/software/vsc-mympirun/3.4.2/lib/:/user/scratch/gent/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
 
 
 JOBSCRIPT
