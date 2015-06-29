@@ -1,0 +1,71 @@
+REQUIRED ENVIRONMENT VARIABLES
+==============================
+
+PATH 			should point to ~/.local/bin					
+PYTHONPATH 		should point to /patchedmpi4py/lib/python 		
+VSC_SCRATCH 	should point to a directory such as /tmp		
+LOADEDMODULES 	should not be empty
+
+
+COMMAND SYNTAX
+==============
+
+[MYMPI] -S [???] -h [CORES] -d mympingpong -f [DEST] -i [ITERATIONS] -n [NUMBER]
+
+[MYMPI] 		is the mympi wrapper that has been chosen and correctly installed/set in mpi4py/mpi.cfg
+-S [???] 		is ???
+-h [CORES] 		is the amount of cores that will be tested upon
+-d 				enables debug mode
+-f [DEST] 		is the destination of the outputfile to which data, used for mympingponganalysis, will be written
+-i [ITERATIONS]	is the amount of iterations that a pair of cores will ping and pong
+-n [NUMBER] 	is the amount of pairs that will be made with the available cores
+
+
+EXPORTS LAPTOP
+================
+export PATH=$PATH:~/.local/bin
+export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
+export VSC_SCRATCH=/tmp
+export LOADEDMODULES=abc
+
+MODULES
+=======
+
+module load Python/2.7.9-intel-2015a
+module load matplotlib/1.4.3-intel-2015a-Python-2.7.9
+
+
+EXPORTS MUK
+=============
+
+export PYTHONPATH=/gpfs/scratch/apps/develop/software/vsc-mympirun/3.4.2/lib/:~/.local/lib/python2.7/site-packages/:/gpfs/scratch/users/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
+
+
+EXPORTS DELCATTY
+==================
+
+export PYTHONPATH=/apps/gent/SL6/sandybridge/software/vsc-mympirun/3.4.2/lib/:/user/scratch/gent/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
+
+
+JOBSCRIPT
+=========
+#!/bin/bash
+module load scripts
+module load Python/2.7.9-intel-2015a
+cd $VSC_SCRATCH/mympingpong
+
+export PYTHONPATH=/gpfs/scratch/apps/develop/software/vsc-mympirun/3.4.2/lib/:~/.local/lib/python2.7/site-packages/:/gpfs/scratch/users/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
+mympirun --variablesprefix=VSC -h 1 taskset -c 0 ./bin/mympingpong.py -f output_$PBS_JOBID -i 20000 -n 20000  > sdtout_$PBS_JOBID
+
+FILE TRANSFER
+=============
+
+=ON MUK=
+scp login104.muk.gent.vsc:/gpfs/scratch/users/vsc415/vsc41588/output_$ID.master-moab.muk.os .
+
+=ON LOGIN=
+cd $VSC_SCRATCH
+scp login104.muk.gent.vsc:/gpfs/scratch/users/vsc415/vsc41588/output_$ID.master-moab.muk.os .
+
+=ON LAPTOP=
+scp vsc41588@login.hpc.ugent.be:/user/scratch/gent/vsc415/vsc41588/output_$ID.master-moab.muk.os .

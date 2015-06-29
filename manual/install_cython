@@ -1,0 +1,19 @@
+download Cython
+
+version=0.12.1
+wget http://www.cython.org/release/Cython-$version.tar.gz
+
+tar czf Cython-$version.tar.gz
+cd Cython-$version
+
+export CC=icc
+export CXX=icpc
+
+python setup.py build --compiler=unix
+
+python setup.py install --home=$HOME/mpi4py/
+
+
+## in mpi4py
+## set PYTHONPATH !!
+make cython

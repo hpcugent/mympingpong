@@ -363,7 +363,27 @@ class mypingpong(mympi):
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
-        nothing, but will write output to a file defined by the -f parameter.
+        nothing, but will write a dict to a file defined by the -f parameter.
+
+        myrank: MPI jobrank of the task
+        nr_tests: number of tests, given by the -n argument
+        totalranks: total amount of MPI jobs
+        name: the MPI processor name
+        msgsize: the size of a message that is being sent between pairs, given by the -m argument
+        iter: the amount of iterations, given by the -i argument
+        pairmode: the way that pairs are grouped together (randomly or 'smart'), given by the -g argument
+        mapfilter: partially defines the way that pairs are grouped together
+        rngfilter: partially defines the way that pairs are grouped together
+        ppbarrier: wether or not a barrier is used during the run
+        mycore: the processor unit that is being used for the task
+        myhwloc: the socket id and core id of the aformentioned processor unit
+        pairs: a list of pairs that has been used in the test
+        data: a list of timing data for each pingpong between pairs
+        ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
+        ppmode: which pingpongmode is being used
+        ppgroup:
+        ppnumber:
+        ppbuiltindummyfirst:
         """
 
         # highest precision mode till now. has 25 internal grouped tests
