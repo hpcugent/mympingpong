@@ -240,7 +240,7 @@ class mypingpong(mympi):
 
         Returns:
         pc: the current Processor Unit
-        ph: its socket-id and core-id
+        ph: its socket-id and core-id (output from hwlocmap())
         """
 
 
@@ -389,14 +389,14 @@ class mypingpong(mympi):
         return res
 
     def makemap(self):
-        """ ???what
+        """returns the internal structure of the machine
 
         Arguments:
         None
 
         Returns:
-        a dict that maps 
-
+        a list with all the processor units on the Machine, in this format
+        'hostname', 'Processor Unit name', [socket-id, core-id, absolute Processor Unit ID]
         """
 
         pc,ph=self.getprocinfo()
@@ -418,7 +418,7 @@ class mypingpong(mympi):
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s"%(pairmode,rngfilter,mapfilter))
     
     def runpingpong(self,seed=None,msgsize=1024,iter=None,nr=None,barrier=True):
-        """Run PingPong
+        """makes a list of pairs and calls pingpong on those
 
         Arguments:
         seed: a seed for the random number generator, should be an int.
@@ -430,7 +430,7 @@ class mypingpong(mympi):
         Returns:
         nothing, but will write a dict to a file defined by the -f parameter.
 
-        myrank: MPI jobrank
+        myrank: MPI jobrank of the task
         nr_tests: number of tests, given by the -n argument
         totalranks: total amount of MPI jobs
         name: the MPI processor name
@@ -440,11 +440,15 @@ class mypingpong(mympi):
         mapfilter: partially defines the way that pairs are grouped together
         rngfilter: partially defines the way that pairs are grouped together
         ppbarrier: wether or not a barrier is used during the run
-        mycore: 
-        myhwloc:
-
-        Description:
-        Will make a list of pairs and call pingpong on those, with a list of zeros as data to send.
+        mycore: the processor unit that is being used for the task
+        myhwloc: the socket id and core id of the aformentioned processor unit
+        pairs: a list of pairs that has been used in the test
+        data: a list of timing data for each pingpong between pairs
+        ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
+        ppmode: which pingpongmode is being used
+        ppgroup:
+        ppnumber:
+        ppbuiltindummyfirst:
         """
 
         ## highest precision mode till now. has 25 internal grouped tests
