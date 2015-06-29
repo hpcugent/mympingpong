@@ -28,6 +28,12 @@ export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
 export VSC_SCRATCH=/tmp
 export LOADEDMODULES=abc
 
+MODULES
+=======
+
+module load Python/2.7.9-intel-2015a
+module load matplotlib/1.4.3-intel-2015a-Python-2.7.9
+
 
 EXPORTS MUK
 =============
