@@ -51,3 +51,15 @@ cd $VSC_SCRATCH/mympingpong
 export PYTHONPATH=/gpfs/scratch/apps/develop/software/vsc-mympirun/3.4.2/lib/:~/.local/lib/python2.7/site-packages/:/gpfs/scratch/users/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
 mympirun --variablesprefix=VSC -h 1 taskset -c 0 ./bin/mympingpong.py -f output_$PBS_JOBID -i 20000 -n 20000  > sdtout_$PBS_JOBID
 
+FILE TRANSFER
+=============
+
+=ON MUK=
+scp login104.muk.gent.vsc:/gpfs/scratch/users/vsc415/vsc41588/output_$ID.master-moab.muk.os .
+
+=ON LOGIN=
+cd $VSC_SCRATCH
+scp login104.muk.gent.vsc:/gpfs/scratch/users/vsc415/vsc41588/output_$ID.master-moab.muk.os .
+
+=ON LAPTOP=
+scp vsc41588@login.hpc.ugent.be:/user/scratch/gent/vsc415/vsc41588/output_$ID.master-moab.muk.os .
