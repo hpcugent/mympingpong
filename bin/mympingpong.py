@@ -247,6 +247,7 @@ class pingpongtest(pingpong_sr):
 
 class mypingpong(mympi):
 
+
     def __init__(self):
         mympi.__init__(self, nolog=False, serial=False)
         self.rngfilter = None
@@ -353,7 +354,8 @@ class mypingpong(mympi):
             pairmode, rngfilter, mapfilter))
 
     def runpingpong(self, seed=None, msgsize=1024, iter=None, nr=None, barrier=True):
-        """Run PingPong
+        """makes a list of pairs and calls pingpong on those
+
 
         Arguments:
         seed: a seed for the random number generator, should be an int.
@@ -406,6 +408,7 @@ class mypingpong(mympi):
 
         map = self.makemap()
         self.log.debug( "runpingpong map: %s" %map )
+
         if self.master:
             self.log.info("runpingpong: making map finished")
 
@@ -431,7 +434,8 @@ class mypingpong(mympi):
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
-        except Exception, err:
+
+        except Exception as err:
             self.log.error(
                 "Failed to create pair instance %s: %s" % (pairmode, err))
 
@@ -528,7 +532,8 @@ class mypingpong(mympi):
 
         try:
             exec(exe)
-        except Exception, err:
+
+        except Exception as err:
             self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s" % (
                 pmode, test, exe, err))
 
@@ -591,7 +596,7 @@ if __name__ == '__main__':
     try:
         fn = os.path.join(getshared(), fnb)
     except KeyError as err:
-        print >> sys.stderr, str(err) + 'is not set, this should point to a shared directory.'
+        print str(err) + 'is not set'
         sys.exit(3)
 
     m.setfn(fn)
