@@ -39,6 +39,9 @@ TODO:
 import sys
 import os
 import re
+from lxml import etree
+
+from vsc.utils.run import run_simple
 
 try:
     from vsc.mympingpong.mympi import mympi, getshared
@@ -272,7 +275,7 @@ class mypingpong(mympi):
 
         hwlocmap = self.hwlocmap()
         try:
-            prop = hwlocmap[myproc]
+            prop = hwlocmap[int(myproc)]
         except Exception, err:
             self.log.error(
                 "getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
@@ -294,106 +297,38 @@ class mypingpong(mympi):
         cmd = "%s --output-format xml %s" % (exe, xmlout)
         ec, txt = self.runrun(cmd, True)
 
-        # parse xmloutput
-        import xml.dom.minidom
-        doc = xml.dom.minidom.parse(xmlout)
-        os.remove(xmlout)
+        ## parse xmloutput
+        base = etree.parse(xmlout)
 
-        sks = doc.getElementsByTagName('object')
-        socketmap = {}
-        for sk in sks:
-            if sk.getAttribute('type') == 'Socket':
-                skid = sk.getAttribute('os_index')
-                if not socketmap.has_key(skid):
-                    socketmap[skid] = {}
-                crs = sk.getElementsByTagName('object')
-                for cr in crs:
-                    if cr.getAttribute('type') == 'Core':
-                        crid = cr.getAttribute('os_index')
-                        pus = cr.getElementsByTagName('object')
-                        socketmap[skid][crid] = []
-                        for pu in pus:
-                            if pu.getAttribute('type') == 'PU':
-                                puid = pu.getAttribute('os_index')
-                                socketmap[skid][crid].append(puid)
-        # sanity check
-        x = [len(v) for v in socketmap.values()]
-        if not (x.count(x[0]) == len(x)):
-            self.log.error(
-                "Something is not correct here. Some sockets have more cores then others. %s" % socketmap)
+        sks_xpath = '/topology/object[@type="Machine"]/object[@type="Socket"]'
+        #list of socket ids
+        sks = map(int, base.xpath(sks_xpath + '/@os_index'))
+        self.log.debug("sockets: %s" %sks)
 
-        crps = x[0]  # cores per socket
-        # sk = socket-id, crs = list of cores in socket
-        for sk, crs in socketmap.items():
-            # cr = core-id, pus = list of PU's in core
-            for cr, pus in crs.items():
-                for pu in pus:  # pu = pu-id
-                    # absolute PU id = (socket id * cores per socket * PU's in
-                    # core) + PU id
-                    cr2 = "%s" % (int(sk)*crps*len(pus)+int(pu))
-                    #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
-                    t = "socket %s core %s abscore %s" % (sk, cr, cr2)
-                    res[cr2] = t
+        aPU = 0
 
-        self.log.debug("hwlocmap: result map: %s" % res)
-        return res
+        for x in xrange(len(sks)):
+            cr_xpath = sks_xpath + '[@os_index="' + str(x) + '"]' + '//object[@type="Core"]'
+            #list of core ids in socket x
+            crs = map(int, base.xpath(cr_xpath + '/@os_index'))
+            self.log.debug("cores: %s" %crs)
 
-    def hwlocmapold(self):
-        res = {}
-        exe = "/usr/bin/hwloc-ls"
-        if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s" % exe)
+            for y in xrange(len(crs)):
+                pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]/object[@type="PU"]'
+                #list of PU ids in core y from socket x
+                pus = map(int, base.xpath(pu_xpath + '/@os_index'))
+                self.log.debug("PU's: %s" %pus)
 
-        cmd = "%s --no-useless-caches" % exe
-        ec, txt = self.runrun(cmd, True)  # TODO vsc-base run
+                # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
+                for z in xrange(len(pus)):
+                    #in case of errors, revert back to this
+                    #aPU = sks[x] * len(crs) * len(pus) + pus[z]
+                    t = "socket %s core %s abscore %s" % (sks[x], crs[y], aPU)
+                    res[aPU] = t
+                    aPU += 1
 
-        """                                                                     
-        0.9.1                                                                   
-        regw=re.compile(r"^(\s*)(\S.*?)(P#(\d+))?$")                            
-        """
-        regw093 = re.compile(
-            r"^(\s*)(\S.*?)(PU?\s*#(\d+)(?:\s*\(phys=\d+\))?)?$")
-        regw112 = re.compile(
-            r"^(\s*)(\S.*?)(L#(\d+)(\s+\+\s+PU\s+L#(?:\d+)(?:\s*\(P#\d+\))?)?)?$")
+        self.log.debug("result map: %s"%res)
 
-        if txt.startswith('System'):
-            regw = regw093
-        elif txt.startswith('Machine'):
-            regw = regw112
-        else:
-            self.log.error(
-                "Unknown hwloc-ls output. Starts with %s" % txt[0:10])
-
-        # this will be passed as regexp. cleanup some characters
-        regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
-        map = {}
-        for l in txt.split("\n"):
-            r = regw.search(l)
-            if not r:
-                continue
-
-            wh = len(r.group(1))
-            whtxt = r.group(2)
-            core = r.group(4)
-
-            ds = map.keys()
-            ds.sort()
-            # tmp will text from level below
-            tmp = ''
-            for d in ds:
-                if d > wh:
-                    del(map[d])
-                if d < wh:
-                    # reuse text from level one below (ds is ordered!)
-                    tmp = map[d]
-
-            if core:
-                res[core] = regclean.sub('', tmp+whtxt)
-            else:
-                # remove all levels higher
-                map[wh] = tmp+whtxt
-
-        self.log.debug("hwlocmap: result map: %s" % res)
         return res
 
     def makemap(self):
