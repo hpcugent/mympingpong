@@ -274,6 +274,7 @@ class mypingpong(mympi):
                 "No single proc found. Was pinning enabled? (taskset: %s)" % out)
 
         hwlocmap = self.hwlocmap()
+
         try:
             prop = hwlocmap[int(myproc)]
         except Exception, err:
