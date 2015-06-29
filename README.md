@@ -18,6 +18,16 @@ TODO
  - switch to pandas
  - introduce data format for full details, make it optional
 
+DEPENDENCIES
+============
+
+(including but not limited to)
+
+ - numpy >= 1.8.2
+ - vsc-base >= 1.8.6
+ - matplotlib >= 1.3.1
+
+
 Results
 =======
 

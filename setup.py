@@ -36,7 +36,7 @@ VERSION = '0.5.0'
 PACKAGE = {
     'name': 'mympingpong',
     'provides': 'mympingpong = %s' % VERSION,
-    'install_requires': ['vsc-base >= 1.8.6'],
+    'install_requires': ['vsc-base >= 1.8.6', 'numpy >= 1.8.2', 'matplotlib >= 1.3.1'],
     'version': VERSION,
     'author': [sdw],
     'maintainer': [sdw],

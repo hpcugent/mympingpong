@@ -34,3 +34,5 @@ pip-log.txt
 html
 test-reports
 htmlcov/
+
+output*
