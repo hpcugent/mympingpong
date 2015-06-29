@@ -233,6 +233,17 @@ class mypingpong(mympi):
         self.pairmode=None
 
     def getprocinfo(self):
+        """returns info on the processor that is being used for the task
+
+        Arguments:
+        None
+
+        Returns:
+        pc: the current Processor Unit
+        ph: its socket-id and core-id
+        """
+
+
         ## which cpus am i on?
         try:
             mypid=os.getpid()
@@ -263,6 +274,16 @@ class mypingpong(mympi):
         return pc,ph
 
     def hwlocmap(self):
+        """parse and return output from hwloc-ls
+
+        Arguments:
+        None
+
+        Returns:
+        A dict that maps the absolute Processor Unit ID to its socket-id and its core-id
+
+        """
+
         res={}
         xmlout="/tmp/test.xml.%s"%os.getpid()
         exe="/usr/bin/hwloc-ls"
@@ -368,6 +389,16 @@ class mypingpong(mympi):
         return res
 
     def makemap(self):
+        """ ???what
+
+        Arguments:
+        None
+
+        Returns:
+        a dict that maps 
+
+        """
+
         pc,ph=self.getprocinfo()
         
         myinfo=[self.name,pc,ph]
@@ -397,7 +428,23 @@ class mypingpong(mympi):
         barrier: if true, wait until every action in a set is finished before starting the next set
         
         Returns:
-        nothing, but will write output to a file defined by the -f parameter.
+        nothing, but will write a dict to a file defined by the -f parameter.
+
+        myrank: MPI jobrank
+        nr_tests: number of tests, given by the -n argument
+        totalranks: total amount of MPI jobs
+        name: the MPI processor name
+        msgsize: the size of a message that is being sent between pairs, given by the -m argument
+        iter: the amount of iterations, given by the -i argument
+        pairmode: the way that pairs are grouped together (randomly or 'smart'), given by the -g argument
+        mapfilter: partially defines the way that pairs are grouped together
+        rngfilter: partially defines the way that pairs are grouped together
+        ppbarrier: wether or not a barrier is used during the run
+        mycore: 
+        myhwloc:
+
+        Description:
+        Will make a list of pairs and call pingpong on those, with a list of zeros as data to send.
         """
 
         ## highest precision mode till now. has 25 internal grouped tests
