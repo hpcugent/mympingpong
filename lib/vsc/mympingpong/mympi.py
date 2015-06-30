@@ -44,8 +44,7 @@ import re
 import zlib
 import cPickle
 import array
-
-from vsc.mympingpong.log import initLog, setdebugloglevel
+import logging
 
 try:
     import numpy as n
@@ -66,8 +65,9 @@ class mympi:
 
     def __init__(self, nolog=True, serial=False):
         if not nolog:
-            self.log = initLog(name=self.__class__.__name__)
+            self.log = logging.getLogger()
 
+        logging.getLogger().setLevel(logging.DEBUG)
 
         self.serial = False
         self.pickledelim = "\nPICKLEDELIMITER\n"
@@ -354,6 +354,8 @@ class slave(mympi):
         mympi.__init__(self, nolog=False)
 
 if __name__ == '__main__':
+
+    print ' STARTING MYMPI ================================================'
     import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ds")
@@ -370,6 +372,7 @@ if __name__ == '__main__':
             debug = True
 
     setdebugloglevel(debug)
+
 
     m = mympi(serial=serial)
 

@@ -40,6 +40,10 @@ import sys
 import os
 import re
 import copy
+import getopt
+import numpy as n
+
+import logging
 
 try:
     from mpi4py.MPI import Wtime as wtime
@@ -52,12 +56,10 @@ except ImportError as err:
     print "Can't load mympi: %s" % err
     sys.exit(1)
 
-import numpy as n
-
-from vsc.mympingpong.log import initLog, setdebugloglevel
+import vsc.mympingpong.pairs as pairs
 
 
-class pingpong_sr:
+class PingPongSR(object):
 
     """
     Define real work
@@ -126,17 +128,18 @@ class pingpong_sr:
         return avg, self.start, self.end
 
 
-class pingpong_rs(pingpong_sr):
+class PingPongRS(PingPongSR):
+    """standard pingpong"""
 
     def setcomm(self):
         self.run1 = self.recv
         self.run2 = self.send
 
 
-class pingpong_sr_fast(pingpong_sr):
+class PingPongSRfast(PingPongSR):
 
     def setsr(self):
-        # use faster pingpong
+        """set the send-recieve optimisation """
         self.send = self.comm.PingpongSR
         self.recv = self.comm.PingpongRS
 
@@ -160,7 +163,6 @@ class pingpong_sr_fast(pingpong_sr):
         if number:
             self.setnumber(number, group)
 
-        # python float are double
         for x in xrange(number/group):
             """
             Comm.PingpongSR(self, 
@@ -182,7 +184,8 @@ class pingpong_sr_fast(pingpong_sr):
         return avg, self.start, self.end
 
 
-class pingpong_rs_fast(pingpong_sr_fast):
+class PingPongRSfast(PingPongSRfast):
+
 
     def setcomm(self):
         self.run1 = self.recv
@@ -192,7 +195,8 @@ class pingpong_rs_fast(pingpong_sr_fast):
         self.tag1 = a
 
 
-class pingpong_sr_fastu10(pingpong_sr_fast):
+class PingPongSRU10(PingPongSRfast):
+    """send-receive optimized for pingponging 10 times"""
 
     def setsr(self):
         # use faster pingpong
@@ -202,7 +206,8 @@ class pingpong_sr_fastu10(pingpong_sr_fast):
         self.recv = self.comm.PingpongRSU10
 
 
-class pingpong_rs_fastu10(pingpong_rs_fast):
+class PingPongRSU10(PingPongRSfast):
+    """receive-send optimized for pingponging 10 times"""
 
     def setsr(self):
         # use faster pingpong
@@ -212,7 +217,8 @@ class pingpong_rs_fastu10(pingpong_rs_fast):
         self.recv = self.comm.PingpongRSU10
 
 
-class pingpong_sr_fast2(pingpong_sr_fast):
+class PingPongSRfast2(PingPongSRfast):
+    """send-receive optimized for pingponging 25 times in a for loop"""    
 
     def setsr(self):
         # use faster pingpong
@@ -222,7 +228,8 @@ class pingpong_sr_fast2(pingpong_sr_fast):
         self.recv = self.comm.PingpongRS25
 
 
-class pingpong_rs_fast2(pingpong_rs_fast):
+class PingPongRSfast2(PingPongRSfast):
+    """receive-send optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
         # use faster pingpong
@@ -232,7 +239,7 @@ class pingpong_rs_fast2(pingpong_rs_fast):
         self.recv = self.comm.PingpongRS25
 
 
-class pingpongtest(pingpong_sr):
+class PingPongtest(PingPongSR):
 
     def dopingpong(number):
         # python float are double
@@ -242,7 +249,7 @@ class pingpongtest(pingpong_sr):
         return self.start, self.end
 
 
-class mypingpong(mympi):
+class MyPingPong(mympi):
 
     def __init__(self):
         mympi.__init__(self, nolog=False, serial=False)
@@ -251,7 +258,8 @@ class mypingpong(mympi):
         self.pairmode = None
 
     def getprocinfo(self):
-        """returns info on the processor that is being used for the task
+        """
+        returns information on the processor that is being used for the task
 
         Arguments:
         None
@@ -261,7 +269,6 @@ class mypingpong(mympi):
         ph: its socket-id and core-id (output from hwlocmap())
         """
 
-        # which cpus am i on?
         try:
             mypid = os.getpid()
         except Exception, err:
@@ -274,25 +281,25 @@ class mypingpong(mympi):
         r = regproc.search(out)
         if r:
             myproc = r.group(1)
-            self.log.debug("getprocinfo: found proc %s taskset: %s" % (myproc, out))
+            self.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
         else:
-            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)" % out)
+            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
 
         hwlocmap = self.hwlocmap()
         try:
             prop = hwlocmap[myproc]
         except KeyError as err:
-            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
+            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
 
         pc = "core_%s" % myproc
         ph = "hwloc_%s" % prop
-        self.log.debug(
-            "getprocinfo: found property core %s hwloc %s" % (pc, ph))
+        self.log.debug("getprocinfo: found property core %s hwloc %s", pc, ph)
 
         return pc, ph
 
     def hwlocmap(self):
-        """parse and return output from hwloc-ls
+        """
+        parse and return output from hwloc-ls
 
         Arguments:
         None
@@ -302,11 +309,13 @@ class mypingpong(mympi):
 
         """
 
+
+        #this entire function is outdated and replaced in the xml-parsing branch
         res = {}
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s" % exe)
+            self.log.error("hwlocmap: Can't find exe %s", exe)
 
         cmd = "%s --output-format xml %s" % (exe, xmlout)
         ec, txt = self.runrun(cmd, True)
@@ -337,7 +346,7 @@ class mypingpong(mympi):
         # sanity check
         x = [len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
-            self.log.error("Something is not correct here. Some sockets have more cores then others. %s" % map)
+            self.log.error("Something is not correct here. Some sockets have more cores then others. %s", map)
 
         crps = x[0]
         for sk, crs in map.items():
@@ -347,7 +356,7 @@ class mypingpong(mympi):
                 t = "socket %s core %s abscore %s" % (sk, cr, cr2)
                 res[cr2] = t
 
-        self.log.debug("hwlocmap: result map: %s" % res)
+        self.log.debug("hwlocmap: result map: %s", res)
         return res
 
     def hwlocmapold(self):
@@ -371,7 +380,7 @@ class mypingpong(mympi):
         elif txt.startswith('Machine'):
             regw = regw112
         else:
-            self.log.error("Unknown hwloc-ls output. Starts with %s" % txt[0:10])
+            self.log.error("Unknown hwloc-ls output. Starts with %s", txt[0:10])
 
         # this will be passed as regexp. cleanup some characters
         regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
@@ -402,11 +411,12 @@ class mypingpong(mympi):
                 # remove all levels higher
                 cpumap[wh] = tmp+whtxt
 
-        self.log.debug("hwlocmap: result map: %s" % res)
+        self.log.debug("hwlocmap: result map: %s", res)
         return res
 
     def makemap(self):
-        """returns the internal structure of the machine
+        """
+        returns the internal structure of the machine
 
         Arguments:
         None
@@ -421,7 +431,7 @@ class mypingpong(mympi):
         myinfo = [self.name, pc, ph]
         mymap = [myinfo for x in xrange(self.size)]
         map = self.comm.alltoall(mymap)
-        self.log.debug("Received map %s" % map)
+        self.log.debug("Received map %s", map)
 
         res = {}
         for x in xrange(self.size):
@@ -432,11 +442,11 @@ class mypingpong(mympi):
         self.pairmode = pairmode
         self.rngfilter = rngfilter
         self.mapfilter = mapfilter
-        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s" % (
-            pairmode, rngfilter, mapfilter))
+        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
     def runpingpong(self, seed=None, msgsize=1024, iter=None, nr=None, barrier=True):
-        """makes a list of pairs and calls pingpong on those
+        """
+        makes a list of pairs and calls pingpong on those
 
         Arguments:
         seed: a seed for the random number generator, should be an int.
@@ -507,14 +517,12 @@ class mypingpong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        import vsc.mympingpong.pairs as pairs
-
         exe = "pair=pairs.%s(seed=self.seed,rng=self.size,id=self.rank)" % self.pairmode
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
         except Exception as err:
-            self.log.error("Failed to create pair instance %s: %s" % (pairmode, err))
+            self.log.error("Failed to create pair instance %s: %s", pairmode, err)
 
         pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
@@ -552,12 +560,13 @@ class mypingpong(mympi):
         self.write(res)
 
     def pingpong(self, p1, p2, pmode='fast2', dat=None, iter=20, barrier=True, dummyfirst=False, test=False):
-        """Pingpong between pairs
+        """
+        Pingpong between pairs
 
         Arguments:
         p1: pair 1
         p2: pair 2
-        pmode: which pingpongmode is used eg. fastu10, fast2 (default: fast2)
+        pmode: which pingpongmode is used (fast, fast2, U10) (default: fast2)
         dat: the data that is being sent
         iter: amount of pingpongs between p1 & p2 (default: 20)
         barrier: if true, wait until every action in a set is finished before starting the next set
@@ -584,28 +593,26 @@ class mypingpong(mympi):
             return -1, details
 
         if (p1 == -1) or (p2 == -1):
-            self.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)" % (p1, p2))
+            self.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)", p1, p2)
             return -1, details
         if (p1 == -2) or (p2 == -2):
-            self.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)" % (p1, p2))
+            self.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)", p1, p2)
             return -1, details
 
         if test:
             exe = 'pp=pingpongtest()'
         elif self.rank == p1:
-            exe = 'pp=pingpong_sr_%s(self.comm,p2)' % pmode
+            exe = 'pp=PingPongSR%s(self.comm,p2)' % pmode
         elif self.rank == p2:
-            exe = 'pp=pingpong_rs_%s(self.comm,p1)' % pmode
+            exe = 'pp=PingPongRS%s(self.comm,p1)' % pmode
         else:
-            self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s" % (
-                self.rank, p1, p2, pmode))
+            self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
             return -1, details
 
         try:
             exec(exe)
         except Exception as err:
-            self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s" % (
-                pmode, test, exe, err))
+            self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
 
         pp.setdat(dat)
 
@@ -621,20 +628,18 @@ class mypingpong(mympi):
 
         timing = [float(avg), float(start[0]), float(end[0])]
 
-        self.log.debug("pingpong p1 %s p2 %s avg/start/end %s" %
-                       (p1, p2, timing))
+        self.log.debug("pingpong p1 %s p2 %s avg/start/end %s", p1, p2, timing)
 
         details.update({
             'ppgroup': pp.group,
             'ppnumber': pp.number,
             'ppbuiltindummyfirst': pp.builtindummyfirst
-            })
+        })
 
         return timing, details
 
 if __name__ == '__main__':
 
-    import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dm:i:n:g:f:")
     except getopt.GetoptError, err:
@@ -660,10 +665,10 @@ if __name__ == '__main__':
             fnb = a
         if o in ['-d']:
             debug = True
+            logging.getLogger().setLevel(logging.DEBUG)
 
-    setdebugloglevel(debug)
 
-    m = mypingpong()
+    m = MyPingPong()
 
     try:
         fn = os.path.join(getshared(), fnb)
