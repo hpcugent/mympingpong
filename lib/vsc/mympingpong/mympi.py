@@ -47,6 +47,10 @@ import array
 
 from vsc.mympingpong.log import initLog, setdebugloglevel
 
+try:
+    import numpy as n
+except Exception as err:
+    self.log.error("Can't load module numpy: %s" % err)
 
 def getshared():
     """
@@ -64,11 +68,6 @@ class mympi:
         if not nolog:
             self.log = initLog(name=self.__class__.__name__)
 
-        try:
-            global n
-            import numpy as n
-        except Exception as err:
-            self.log.error("Can't load module numpy: %s" % err)
 
         self.serial = False
         self.pickledelim = "\nPICKLEDELIMITER\n"

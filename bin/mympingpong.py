@@ -43,9 +43,16 @@ from lxml import etree
 
 from vsc.utils.run import run_simple
 
+import copy
+
+try:
+    from mpi4py.MPI import Wtime as wtime
+except ImportError as err:
+    print "Warning: wtime could not be imported, some functions might break."
+
 try:
     from vsc.mympingpong.mympi import mympi, getshared
-except Exception, err:
+except ImportError as err:
     print "Can't load mympi: %s" % err
     sys.exit(1)
 
@@ -69,11 +76,6 @@ class pingpong_sr:
     def __init__(self, comm, other):
 
         self.comm = comm
-        try:
-            global wtime
-            from mpi4py.MPI import Wtime as wtime
-        except Exception, err:
-            pass
 
         self.sndbuf = None
         self.rcvbuf = None
@@ -105,7 +107,6 @@ class pingpong_sr:
     def setdat(self, dat):
         self.sndbuf = dat
         # make a copy of the receivebuffer
-        import copy
         self.rcvbuf = copy.deepcopy(self.sndbuf)
 
     def setnumber(self, number):
@@ -276,7 +277,7 @@ class mypingpong(mympi):
 
         try:
             prop = hwlocmap[int(myproc)]
-        except Exception, err:
+        except KeyError, err:
             self.log.error(
                 "getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
 
