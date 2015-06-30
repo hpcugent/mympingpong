@@ -301,7 +301,7 @@ class mypingpong(mympi):
         ## parse xmloutput
         base = etree.parse(xmlout)
 
-        sks_xpath = '/topology/object[@type="Machine"]/object[@type="Socket"]'
+        sks_xpath = '//object[@type="Socket"]'
         #list of socket ids
         sks = map(int, base.xpath(sks_xpath + '/@os_index'))
         self.log.debug("sockets: %s" %sks)
@@ -315,7 +315,7 @@ class mypingpong(mympi):
             self.log.debug("cores: %s" %crs)
 
             for y in xrange(len(crs)):
-                pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]/object[@type="PU"]'
+                pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]//object[@type="PU"]'
                 #list of PU ids in core y from socket x
                 pus = map(int, base.xpath(pu_xpath + '/@os_index'))
                 self.log.debug("PU's: %s" %pus)
