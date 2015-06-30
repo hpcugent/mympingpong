@@ -274,18 +274,15 @@ class mypingpong(mympi):
         r = regproc.search(out)
         if r:
             myproc = r.group(1)
-            self.log.debug(
-                "getprocinfo: found proc %s taskset: %s" % (myproc, out))
+            self.log.debug("getprocinfo: found proc %s taskset: %s" % (myproc, out))
         else:
-            self.log.error(
-                "No single proc found. Was pinning enabled? (taskset: %s)" % out)
+            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)" % out)
 
         hwlocmap = self.hwlocmap()
         try:
-            prop = hwlocmap[myproc]
+            prop = hwlocmap[mypro
         except Exception as err:
-            self.log.error(
-                "getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
+            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
 
         pc = "core_%s" % myproc
         ph = "hwloc_%s" % prop
@@ -340,8 +337,7 @@ class mypingpong(mympi):
         # sanity check
         x = [len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
-            self.log.error(
-                "Something is not correct here. Some sockets have more cores then others. %s" % map)
+            self.log.error("Something is not correct here. Some sockets have more cores then others. %s" % map)
 
         crps = x[0]
         for sk, crs in map.items():
@@ -367,22 +363,19 @@ class mypingpong(mympi):
         0.9.1                                                                   
         regw=re.compile(r"^(\s*)(\S.*?)(P#(\d+))?$")                            
         """
-        regw093 = re.compile(
-            r"^(\s*)(\S.*?)(PU?\s*#(\d+)(?:\s*\(phys=\d+\))?)?$")
-        regw112 = re.compile(
-            r"^(\s*)(\S.*?)(L#(\d+)(\s+\+\s+PU\s+L#(?:\d+)(?:\s*\(P#\d+\))?)?)?$")
+        regw093 = re.compile(r"^(\s*)(\S.*?)(PU?\s*#(\d+)(?:\s*\(phys=\d+\))?)?$")
+        regw112 = re.compile(r"^(\s*)(\S.*?)(L#(\d+)(\s+\+\s+PU\s+L#(?:\d+)(?:\s*\(P#\d+\))?)?)?$")
 
         if txt.startswith('System'):
             regw = regw093
         elif txt.startswith('Machine'):
             regw = regw112
         else:
-            self.log.error(
-                "Unknown hwloc-ls output. Starts with %s" % txt[0:10])
+            self.log.error("Unknown hwloc-ls output. Starts with %s" % txt[0:10])
 
         # this will be passed as regexp. cleanup some characters
         regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
-        map = {}
+        cpumap = {}
         for l in txt.split("\n"):
             r = regw.search(l)
             if not r:
@@ -392,22 +385,22 @@ class mypingpong(mympi):
             whtxt = r.group(2)
             core = r.group(4)
 
-            ds = map.keys()
+            ds = cpumap.keys()
             ds.sort()
             # tmp will text from level below
             tmp = ''
             for d in ds:
                 if d > wh:
-                    del(map[d])
+                    del(cpumap[d])
                 if d < wh:
                     # reuse text from level one below (ds is ordered!)
-                    tmp = map[d]
+                    tmp = cpumap[d]
 
             if core:
                 res[core] = regclean.sub('', tmp+whtxt)
             else:
                 # remove all levels higher
-                map[wh] = tmp+whtxt
+                cpumap[wh] = tmp+whtxt
 
         self.log.debug("hwlocmap: result map: %s" % res)
         return res
@@ -491,26 +484,26 @@ class mypingpong(mympi):
         if type(seed) == int:
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
-            self.log.error(
-                "Runpingpong in mode shuffle and no seeding: this will never work.")
+            self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
 
-        map = self.makemap()
+        cpumap = self.makemap()
         if self.master:
             self.log.info("runpingpong: making map finished")
 
-        res = {'myrank': self.rank,
-               'nr_tests': nr,
-               'totalranks': self.size,
-               'name': self.name,
-               'msgsize': msgsize,
-               'iter': iter,
-               'pairmode': self.pairmode,
-               'mapfilter': self.mapfilter,
-               'rngfilter': self.rngfilter,
-               'ppbarrier': barrier,
-               'mycore': map[self.rank][1],
-               'myhwloc': map[self.rank][2],
-               }
+        res = {
+            'myrank': self.rank,
+            'nr_tests': nr,
+            'totalranks': self.size,
+            'name': self.name,
+            'msgsize': msgsize,
+            'iter': iter,
+            'pairmode': self.pairmode,
+            'mapfilter': self.mapfilter,
+            'rngfilter': self.rngfilter,
+            'ppbarrier': barrier,
+            'mycore': cpumap[self.rank][1],
+            'myhwloc': cpumap[self.rank][2],
+            }
 
         data = n.zeros((nr, 3), float)
 
@@ -521,14 +514,9 @@ class mypingpong(mympi):
             # TODO: discover this via getchildren approach
             exec(exe)
         except Exception as err:
-            self.log.error(
-                "Failed to create pair instance %s: %s" % (pairmode, err))
+            self.log.error("Failed to create pair instance %s: %s" % (pairmode, err))
 
-        # pair.addmap(map,'incl','^hwloc')
-        # pair.addmap(map,'incl','^(a|b)')
-        # pair.addmap(map,'excl','^(a|b)')
-        # pair.addmap(map,'groupexcl','^(a|b)')
-        pair.addmap(map, self.rngfilter, self.mapfilter)
+        pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
         pair.addnr(nr)
 
@@ -538,8 +526,7 @@ class mypingpong(mympi):
 
         # introduce barrier
         self.comm.barrier()
-        self.log.debug(
-            "runpingpong: barrier before real start (map + pairs done)")
+        self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
         runid = 0
         for pair in mypairs:
@@ -582,12 +569,13 @@ class mypingpong(mympi):
         details: a dictionary with the pp.group, pp.number and pp.builtindummyfirst
         """
 
-        details = {'ppdummyfirst': dummyfirst,
-                   'ppmode': pmode,
-                   'ppgroup': None,
-                   'ppnumber': None,
-                   'ppbuiltindummyfirst': None
-                   }
+        details = {
+            'ppdummyfirst': dummyfirst,
+            'ppmode': pmode,
+            'ppgroup': None,
+            'ppnumber': None,
+            'ppbuiltindummyfirst': None
+            }
 
         if not dat:
             dat = self.makedata()
@@ -596,12 +584,10 @@ class mypingpong(mympi):
             return -1, details
 
         if (p1 == -1) or (p2 == -1):
-            self.log.debug(
-                "pingpong: do nothing: 0 results in pair (ps: %s p2 %s)" % (p1, p2))
+            self.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)" % (p1, p2))
             return -1, details
         if (p1 == -2) or (p2 == -2):
-            self.log.debug(
-                "pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)" % (p1, p2))
+            self.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)" % (p1, p2))
             return -1, details
 
         if test:
@@ -638,10 +624,11 @@ class mypingpong(mympi):
         self.log.debug("pingpong p1 %s p2 %s avg/start/end %s" %
                        (p1, p2, timing))
 
-        details.update({'ppgroup': pp.group,
-                        'ppnumber': pp.number,
-                        'ppbuiltindummyfirst': pp.builtindummyfirst
-                        })
+        details.update({
+            'ppgroup': pp.group,
+            'ppnumber': pp.number,
+            'ppbuiltindummyfirst': pp.builtindummyfirst
+            })
 
         return timing, details
 
