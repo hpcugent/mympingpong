@@ -43,20 +43,15 @@ import copy
 import getopt
 import numpy as n
 
-import logging
+from vsc.utils.generaloption import simple_option
 
 try:
     from mpi4py.MPI import Wtime as wtime
 except ImportError as err:
     print "Warning: wtime could not be imported, some functions might break."
 
-try:
-    from vsc.mympingpong.mympi import mympi, getshared
-except ImportError as err:
-    print "Can't load mympi: %s" % err
-    sys.exit(1)
+from vsc.mympingpong.mympi import mympi, getshared
 
-from vsc.utils.generaloption import simple_option
 
 import vsc.mympingpong.pairs as pairs
 
@@ -274,7 +269,7 @@ class MyPingPong(mympi):
         try:
             mypid = os.getpid()
         except Exception, err:
-            self.log.error("Can't obtain current process id: %s" % err)
+            go.log.error("Can't obtain current process id: %s" % err)
 
         # get taskset
         cmd = "taskset -c -p %s" % mypid
@@ -285,13 +280,13 @@ class MyPingPong(mympi):
             myproc = r.group(1)
             go.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
         else:
-            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
+            go.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
 
         hwlocmap = self.hwlocmap()
         try:
             prop = hwlocmap[myproc]
         except KeyError as err:
-            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
+            go.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
 
         pc = "core_%s" % myproc
         ph = "hwloc_%s" % prop
@@ -317,7 +312,7 @@ class MyPingPong(mympi):
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s", exe)
+            go.log.error("hwlocmap: Can't find exe %s", exe)
 
         cmd = "%s --output-format xml %s" % (exe, xmlout)
         ec, txt = self.runrun(cmd, True)
@@ -348,7 +343,7 @@ class MyPingPong(mympi):
         # sanity check
         x = [len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
-            self.log.error("Something is not correct here. Some sockets have more cores then others. %s", map)
+            go.log.error("Something is not correct here. Some sockets have more cores then others. %s", map)
 
         crps = x[0]
         for sk, crs in map.items():
@@ -365,7 +360,7 @@ class MyPingPong(mympi):
         res = {}
         exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s" % exe)
+            go.log.error("hwlocmap: Can't find exe %s" % exe)
 
         cmd = "%s --no-useless-caches" % exe
         ec, txt = self.runrun(cmd, True)  # TODO vsc-base run
@@ -382,7 +377,7 @@ class MyPingPong(mympi):
         elif txt.startswith('Machine'):
             regw = regw112
         else:
-            self.log.error("Unknown hwloc-ls output. Starts with %s", txt[0:10])
+            go.log.error("Unknown hwloc-ls output. Starts with %s", txt[0:10])
 
         # this will be passed as regexp. cleanup some characters
         regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
@@ -496,11 +491,11 @@ class MyPingPong(mympi):
         if type(seed) == int:
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
-            self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
+            go.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         cpumap = self.makemap()
         if self.master:
-            self.log.info("runpingpong: making map finished")
+            go.log.info("runpingpong: making map finished")
 
         res = {
             'myrank': self.rank,
@@ -524,7 +519,7 @@ class MyPingPong(mympi):
             # TODO: discover this via getchildren approach
             exec(exe)
         except Exception as err:
-            self.log.error("Failed to create pair instance %s: %s", pairmode, err)
+            go.log.error("Failed to create pair instance %s: %s", pairmode, err)
 
         pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
@@ -532,7 +527,7 @@ class MyPingPong(mympi):
 
         mypairs = pair.makepairs()
         if self.master:
-            self.log.info("runpingpong: making pairs finished")
+            go.log.info("runpingpong: making pairs finished")
 
         # introduce barrier
         self.comm.barrier()
@@ -614,7 +609,7 @@ class MyPingPong(mympi):
         try:
             exec(exe)
         except Exception as err:
-            self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
+            go.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
 
         pp.setdat(dat)
 
@@ -623,10 +618,10 @@ class MyPingPong(mympi):
             pp.dopingpong(1)
 
         if self.master:
-            self.log.info("runpingpong: starting dopingpong")
+            go.log.info("runpingpong: starting dopingpong")
         avg, start, end = pp.dopingpong(iter)
         if self.master:
-            self.log.info("runpingpong: end dopingpong")
+            go.log.info("runpingpong: end dopingpong")
 
         timing = [float(avg), float(start[0]), float(end[0])]
 
