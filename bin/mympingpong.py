@@ -60,6 +60,7 @@ import vsc.mympingpong.pairs as pairs
 
 
 class PingPongSR(object):
+    """standard pingpong"""
 
     """
     Define real work
@@ -271,7 +272,7 @@ class MyPingPong(mympi):
 
         try:
             mypid = os.getpid()
-        except Exception, err:
+        except OSError as err:
             self.log.error("Can't obtain current process id: %s" % err)
 
         # get taskset
@@ -298,6 +299,7 @@ class MyPingPong(mympi):
         return pc, ph
 
     def hwlocmap(self):
+        #this entire function is outdated and replaced in the xml-parsing branch
         """
         parse and return output from hwloc-ls
 
@@ -310,7 +312,6 @@ class MyPingPong(mympi):
         """
 
 
-        #this entire function is outdated and replaced in the xml-parsing branch
         res = {}
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
@@ -355,61 +356,6 @@ class MyPingPong(mympi):
                 #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
                 t = "socket %s core %s abscore %s" % (sk, cr, cr2)
                 res[cr2] = t
-
-        self.log.debug("hwlocmap: result map: %s", res)
-        return res
-
-    def hwlocmapold(self):
-        res = {}
-        exe = "/usr/bin/hwloc-ls"
-        if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s" % exe)
-
-        cmd = "%s --no-useless-caches" % exe
-        ec, txt = self.runrun(cmd, True)  # TODO vsc-base run
-
-        """                                                                     
-        0.9.1                                                                   
-        regw=re.compile(r"^(\s*)(\S.*?)(P#(\d+))?$")                            
-        """
-        regw093 = re.compile(r"^(\s*)(\S.*?)(PU?\s*#(\d+)(?:\s*\(phys=\d+\))?)?$")
-        regw112 = re.compile(r"^(\s*)(\S.*?)(L#(\d+)(\s+\+\s+PU\s+L#(?:\d+)(?:\s*\(P#\d+\))?)?)?$")
-
-        if txt.startswith('System'):
-            regw = regw093
-        elif txt.startswith('Machine'):
-            regw = regw112
-        else:
-            self.log.error("Unknown hwloc-ls output. Starts with %s", txt[0:10])
-
-        # this will be passed as regexp. cleanup some characters
-        regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
-        cpumap = {}
-        for l in txt.split("\n"):
-            r = regw.search(l)
-            if not r:
-                continue
-
-            wh = len(r.group(1))
-            whtxt = r.group(2)
-            core = r.group(4)
-
-            ds = cpumap.keys()
-            ds.sort()
-            # tmp will text from level below
-            tmp = ''
-            for d in ds:
-                if d > wh:
-                    del(cpumap[d])
-                if d < wh:
-                    # reuse text from level one below (ds is ordered!)
-                    tmp = cpumap[d]
-
-            if core:
-                res[core] = regclean.sub('', tmp+whtxt)
-            else:
-                # remove all levels higher
-                cpumap[wh] = tmp+whtxt
 
         self.log.debug("hwlocmap: result map: %s", res)
         return res
