@@ -39,26 +39,17 @@ TODO:
 import sys
 import os
 import re
+
 from lxml import etree
-
-from vsc.utils.run import run_simple
-
 import copy
 import getopt
 import numpy as n
 
+from vsc.utils.run import run_simple
 from vsc.utils.generaloption import simple_option
-
-from logging import getLogger
-
-try:
-    from mpi4py.MPI import Wtime as wtime
-except ImportError as err:
-    print "Warning: wtime could not be imported, some functions might break."
-
 from vsc.mympingpong.mympi import mympi, getshared
-
-
+from logging import getLogger
+from mpi4py.MPI import Wtime as wtime
 import vsc.mympingpong.pairs as pairs
 
 
@@ -278,11 +269,11 @@ class MyPingPong(mympi):
         try:
             mypid = os.getpid()
         except OSError as err:
-            self.log.error("Can't obtain current process id: %s" % err)
+            self.log.error("Can't obtain current process id: %s", err)
 
         # get taskset
         cmd = "taskset -c -p %s" % mypid
-        ec, out = self.runrun(cmd, True)
+        ec, out = run_simple(cmd)
         regproc = re.compile(r"\s+(\d+)\s*$")
         r = regproc.search(out)
         if r:
@@ -297,8 +288,7 @@ class MyPingPong(mympi):
         try:
             prop = hwlocmap[int(myproc)]
         except KeyError as err:
-            self.log.error(
-                "getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
+            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
 
         pc = "core_%s" % myproc
         ph = "hwloc_%s" % prop
@@ -318,10 +308,10 @@ class MyPingPong(mympi):
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s" % exe)
+            self.log.error("hwlocmap: Can't find exe %s", exe)
 
         cmd = "%s --output-format xml %s" % (exe, xmlout)
-        ec, txt = self.runrun(cmd, True)
+        ec, txt = run_simple(cmd)
 
         ## parse xmloutput
         base = etree.parse(xmlout)
@@ -329,7 +319,7 @@ class MyPingPong(mympi):
         sks_xpath = '//object[@type="Socket"]'
         #list of socket ids
         sks = map(int, base.xpath(sks_xpath + '/@os_index'))
-        self.log.debug("sockets: %s" %sks)
+        self.log.debug("sockets: %s", sks)
 
         aPU = 0
 
@@ -337,13 +327,13 @@ class MyPingPong(mympi):
             cr_xpath = sks_xpath + '[@os_index="' + str(x) + '"]' + '//object[@type="Core"]'
             #list of core ids in socket x
             crs = map(int, base.xpath(cr_xpath + '/@os_index'))
-            self.log.debug("cores: %s" %crs)
+            self.log.debug("cores: %s", crs)
 
             for y in xrange(len(crs)):
                 pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]//object[@type="PU"]'
                 #list of PU ids in core y from socket x
                 pus = map(int, base.xpath(pu_xpath + '/@os_index'))
-                self.log.debug("PU's: %s" %pus)
+                self.log.debug("PU's: %s", pus)
 
                 # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
                 for z in xrange(len(pus)):
@@ -353,7 +343,7 @@ class MyPingPong(mympi):
                     res[aPU] = t
                     aPU += 1
 
-        self.log.debug("result map: %s"%res)
+        self.log.debug("result map: %s", res)
 
         return res
 
@@ -374,7 +364,7 @@ class MyPingPong(mympi):
         myinfo = [self.name, pc, ph]
         mymap = [myinfo for x in xrange(self.size)]
         alltoall = self.comm.alltoall(mymap)
-        self.log.debug("Received map %s", map)
+        self.log.debug("Received map %s", alltoall)
 
         res = {}
         for x in xrange(self.size):
