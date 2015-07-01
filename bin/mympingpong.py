@@ -65,7 +65,6 @@ import vsc.mympingpong.pairs as pairs
 class PingPongSR(object):
 
     """standard pingpong"""
-
     """
     Define real work
     - no status check
@@ -136,7 +135,6 @@ class PingPongSR(object):
 
 
 class PingPongRS(PingPongSR):
-
     """standard pingpong"""
 
     def setcomm(self):
@@ -258,7 +256,6 @@ class PingPongtest(PingPongSR):
 
 class MyPingPong(mympi):
 
-
     def __init__(self, logger):
         mympi.__init__(self, nolog=False, serial=False)
         self.log = logger
@@ -298,7 +295,7 @@ class MyPingPong(mympi):
 
         try:
             prop = hwlocmap[int(myproc)]
-        except KeyError, err:
+        except KeyError as err:
             self.log.error(
                 "getprocinfo: failed to get hwloc info: map %s, err %s" % (hwlocmap, err))
 
@@ -364,16 +361,20 @@ class MyPingPong(mympi):
         self.log.debug("hwlocmap: result map: %s"%res)
         return res
 
+
     def makemap(self):
-        """returns the internal structure of the machine
+        """
+        returns the internal structure of the machine
+
         Arguments:
         None
+
         Returns:
         a list with all the processor units on the Machine, in this format
         'hostname', 'Processor Unit name', [socket-id, core-id, absolute Processor Unit ID]
         """
-        pc, ph = self.getprocinfo()
 
+        pc, ph = self.getprocinfo()
         myinfo = [self.name, pc, ph]
         mymap = [myinfo for x in xrange(self.size)]
         alltoall = self.comm.alltoall(mymap)
@@ -393,7 +394,6 @@ class MyPingPong(mympi):
     def runpingpong(self, seed=None, msgsize=1024, it=None, nr=None, barrier=True):
         """
         makes a list of pairs and calls pingpong on those
-
 
         Arguments:
         seed: a seed for the random number generator, should be an int.
