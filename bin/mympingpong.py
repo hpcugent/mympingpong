@@ -57,6 +57,7 @@ import vsc.mympingpong.pairs as pairs
 
 
 class PingPongSR(object):
+
     """standard pingpong"""
 
     """
@@ -127,6 +128,7 @@ class PingPongSR(object):
 
 
 class PingPongRS(PingPongSR):
+
     """standard pingpong"""
 
     def setcomm(self):
@@ -184,7 +186,6 @@ class PingPongSRfast(PingPongSR):
 
 class PingPongRSfast(PingPongSRfast):
 
-
     def setcomm(self):
         self.run1 = self.recv
         # flip tags
@@ -194,6 +195,7 @@ class PingPongRSfast(PingPongSRfast):
 
 
 class PingPongSRU10(PingPongSRfast):
+
     """send-receive optimized for pingponging 10 times"""
 
     def setsr(self):
@@ -205,6 +207,7 @@ class PingPongSRU10(PingPongSRfast):
 
 
 class PingPongRSU10(PingPongRSfast):
+
     """receive-send optimized for pingponging 10 times"""
 
     def setsr(self):
@@ -216,7 +219,8 @@ class PingPongRSU10(PingPongRSfast):
 
 
 class PingPongSRfast2(PingPongSRfast):
-    """send-receive optimized for pingponging 25 times in a for loop"""    
+
+    """send-receive optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
         # use faster pingpong
@@ -227,6 +231,7 @@ class PingPongSRfast2(PingPongSRfast):
 
 
 class PingPongRSfast2(PingPongRSfast):
+
     """receive-send optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
@@ -272,7 +277,6 @@ class MyPingPong(mympi):
         except OSError as err:
             self.log.error("Can't obtain current process id: %s" % err)
 
-
         # get taskset
         cmd = "taskset -c -p %s" % mypid
         ec, out = self.runrun(cmd, True)
@@ -297,7 +301,7 @@ class MyPingPong(mympi):
         return pc, ph
 
     def hwlocmap(self):
-        #this entire function is outdated and replaced in the xml-parsing branch
+        # this entire function is outdated and replaced in the xml-parsing branch
         """
         parse and return output from hwloc-ls
 
@@ -308,7 +312,6 @@ class MyPingPong(mympi):
         A dict that maps the absolute Processor Unit ID to its socket-id and its core-id
 
         """
-
 
         res = {}
         xmlout = "/tmp/test.xml.%s" % os.getpid()
@@ -457,7 +460,7 @@ class MyPingPong(mympi):
             'ppbarrier': barrier,
             'mycore': cpumap[self.rank][1],
             'myhwloc': cpumap[self.rank][2],
-            }
+        }
 
         data = n.zeros((nr, 3), float)
 
@@ -528,7 +531,7 @@ class MyPingPong(mympi):
             'ppgroup': None,
             'ppnumber': None,
             'ppbuiltindummyfirst': None
-            }
+        }
 
         if not dat:
             dat = self.makedata()
@@ -586,42 +589,42 @@ if __name__ == '__main__':
 
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
-        'number':(
+        'number': (
             'set the number',
             int,
             'store',
             None,
             'n'
-            ),
-        'messagesize':(
+        ),
+        'messagesize': (
             'set the message size in Bytes',
             int,
             'store',
             1024,
             'm'
-            ),
-        'iterations':(
+        ),
+        'iterations': (
             'set the number of iterations',
             int,
             'store',
             None,
             'i'
-            ),
-        'groupmode':(
+        ),
+        'groupmode': (
             'set the groupmode',
             str,
             'store',
             None,
             'g'
-            ),
-        'output':(
+        ),
+        'output': (
             'set the outputfile',
             str,
             'store',
             'test2',
             'f'
-            )
-        }
+        )
+    }
 
     go = simple_option(options)
 
