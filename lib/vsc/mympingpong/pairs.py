@@ -38,12 +38,12 @@ TODO:
 import sys,os,re,copy
 
 import numpy as n
-    
-from vsc.mympingpong.log import initLog,setdebugloglevel
+import logging
+
 
 class pair:
     def __init__(self,rng=None,seed=None,id=None):
-        self.log=initLog(name=self.__class__.__name__)
+        self.log=logging.getLogger()
 
         self.seed=None
 
@@ -346,63 +346,3 @@ class hwloc(shuffle):
     
         self.log.debug("makepairs %s returns\n%s"%(self.id,res.transpose()))
         return res
-
-
-if __name__ == '__main__':
-    import getopt
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dr:m:i:")
-    except getopt.GetoptError, err:
-        print str(err) # will print something like "option -a not recognized"
-        sys.exit(2)
-
-    rng=10
-    mode='shuffle'
-    nr=10
-    id=2
-    debug=False
-    for o,a in opts:
-        if o in ['-r']:
-            rng=int(a)
-        if o in ['-n']:
-            nr=int(a)
-        if o in ['-i']:
-            id=int(a)
-        if o in ['-m']:
-            mode=a
-        if o in ['-d']:
-            debug=True
-
-    setdebugloglevel(debug)
-
-    map={0:['a','hwloc1'],1:['a','hwloc3'],2:['a','hwloc2'],3:['a','hwloc0'],
-         4:['b','hwloc1'],5:['b','hwloc3'],6:['b','hwloc2'],7:['b','hwloc0'],
-         }
-    map={0:['a','hwloc1'],1:['a','hwloc3'],2:['a','hwloc2'],3:['a','hwloc0'],
-         4:['a','hwloc1'],5:['a','hwloc3'],6:['a','hwloc2'],7:['a','hwloc0'],
-         8:['b','hwloc2'],9:['b','hwloc1'],10:['b','hwloc3'],11:['b','hwloc0'],
-         12:['b','hwloc2'],13:['b','hwloc1'],14:['b','hwloc3'],15:['b','hwloc0'],
-         16:['c','hwloc1'],17:['c','hwloc3'],18:['c','hwloc2'],19:['c','hwloc0'],
-         20:['c','hwloc1'],21:['c','hwloc3'],22:['c','hwloc2'],23:['c','hwloc0'],
-         24:['d','hwloc2'],25:['d','hwloc1'],26:['d','hwloc3'],27:['d','hwloc0'],
-         28:['d','hwloc2'],29:['d','hwloc1'],30:['d','hwloc3'],31:['d','hwloc0'],
-         }
-
-    for id in range(rng):
-        
-        exe='p=%s(rng=rng,id=id)'%mode
-        
-        exec(exe)
-    
-        #p.addmap(map,'incl','^hwloc')
-        #p.addmap(map,'incl','^(a|b)')
-        #p.addmap(map,'excl','^(a|b)')
-        p.addmap(map,'groupexcl','^(a|b|c|d)')
-        p.addnr(nr)
-        p.setseed(5)
-    
-        ps=p.makepairs()
-        print "%s\n%s"%(id,ps.transpose())
-        
-        del p
-    
