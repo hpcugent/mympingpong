@@ -61,6 +61,7 @@ import vsc.mympingpong.pairs as pairs
 
 
 class PingPongSR(object):
+    """standard pingpong"""
 
     """
     Define real work
@@ -273,8 +274,9 @@ class MyPingPong(mympi):
 
         try:
             mypid = os.getpid()
-        except Exception, err:
-            go.log.error("Can't obtain current process id: %s" % err)
+
+        except OSError as err:
+            self.log.error("Can't obtain current process id: %s" % err)
 
         # get taskset
         cmd = "taskset -c -p %s" % mypid
