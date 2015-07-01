@@ -274,7 +274,6 @@ class MyPingPong(mympi):
 
         try:
             mypid = os.getpid()
-
         except OSError as err:
             self.log.error("Can't obtain current process id: %s" % err)
 
