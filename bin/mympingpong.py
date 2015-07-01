@@ -45,6 +45,8 @@ import numpy as n
 
 from vsc.utils.generaloption import simple_option
 
+from logging import getLogger
+
 try:
     from mpi4py.MPI import Wtime as wtime
 except ImportError as err:
@@ -70,7 +72,9 @@ class PingPongSR(object):
 
     """
 
-    def __init__(self, comm, other):
+    def __init__(self, comm, other, logger):
+
+        self.log = logger
 
         self.comm = comm
 
@@ -195,7 +199,6 @@ class PingPongRSfast(PingPongSRfast):
 
 
 class PingPongSRU10(PingPongSRfast):
-
     """send-receive optimized for pingponging 10 times"""
 
     def setsr(self):
@@ -207,7 +210,6 @@ class PingPongSRU10(PingPongSRfast):
 
 
 class PingPongRSU10(PingPongRSfast):
-
     """receive-send optimized for pingponging 10 times"""
 
     def setsr(self):
@@ -219,7 +221,6 @@ class PingPongRSU10(PingPongRSfast):
 
 
 class PingPongSRfast2(PingPongSRfast):
-
     """send-receive optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
@@ -231,7 +232,6 @@ class PingPongSRfast2(PingPongSRfast):
 
 
 class PingPongRSfast2(PingPongRSfast):
-
     """receive-send optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
@@ -254,8 +254,9 @@ class PingPongtest(PingPongSR):
 
 class MyPingPong(mympi):
 
-    def __init__(self):
+    def __init__(self, logger):
         mympi.__init__(self, nolog=False, serial=False)
+        self.log = logger
         self.rngfilter = None
         self.mapfilter = None
         self.pairmode = None
@@ -284,19 +285,19 @@ class MyPingPong(mympi):
         r = regproc.search(out)
         if r:
             myproc = r.group(1)
-            go.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
+            self.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
         else:
-            go.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
+            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
 
         hwlocmap = self.hwlocmap()
         try:
             prop = hwlocmap[myproc]
         except KeyError as err:
-            go.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
+            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
 
         pc = "core_%s" % myproc
         ph = "hwloc_%s" % prop
-        go.log.debug("getprocinfo: found property core %s hwloc %s", pc, ph)
+        self.log.debug("getprocinfo: found property core %s hwloc %s", pc, ph)
 
         return pc, ph
 
@@ -317,7 +318,7 @@ class MyPingPong(mympi):
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            go.log.error("hwlocmap: Can't find exe %s", exe)
+            self.log.error("hwlocmap: Can't find exe %s", exe)
 
         cmd = "%s --output-format xml %s" % (exe, xmlout)
         ec, txt = self.runrun(cmd, True)
@@ -348,7 +349,7 @@ class MyPingPong(mympi):
         # sanity check
         x = [len(v) for v in map.values()]
         if not (x.count(x[0]) == len(x)):
-            go.log.error("Something is not correct here. Some sockets have more cores then others. %s", map)
+            self.log.error("Something is not correct here. Some sockets have more cores then others. %s", map)
 
         crps = x[0]
         for sk, crs in map.items():
@@ -358,7 +359,7 @@ class MyPingPong(mympi):
                 t = "socket %s core %s abscore %s" % (sk, cr, cr2)
                 res[cr2] = t
 
-        go.log.debug("hwlocmap: result map: %s", res)
+        self.log.debug("hwlocmap: result map: %s", res)
         return res
 
     def makemap(self):
@@ -378,7 +379,7 @@ class MyPingPong(mympi):
         myinfo = [self.name, pc, ph]
         mymap = [myinfo for x in xrange(self.size)]
         alltoall = self.comm.alltoall(mymap)
-        go.log.debug("Received map %s", map)
+        self.log.debug("Received map %s", map)
 
         res = {}
         for x in xrange(self.size):
@@ -389,7 +390,7 @@ class MyPingPong(mympi):
         self.pairmode = pairmode
         self.rngfilter = rngfilter
         self.mapfilter = mapfilter
-        go.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
+        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
     def runpingpong(self, seed=None, msgsize=1024, it=None, nr=None, barrier=True):
         """
@@ -441,11 +442,11 @@ class MyPingPong(mympi):
         if isinstance(seed, int):
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
-            go.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
+            self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         cpumap = self.makemap()
         if self.master:
-            go.log.info("runpingpong: making map finished")
+            self.log.info("runpingpong: making map finished")
 
         res = {
             'myrank': self.rank,
@@ -469,7 +470,7 @@ class MyPingPong(mympi):
             # TODO: discover this via getchildren approach
             exec(exe)
         except Exception as err:
-            go.log.error("Failed to create pair instance %s: %s", pairmode, err)
+            self.log.error("Failed to create pair instance %s: %s", pairmode, err)
 
         pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
@@ -477,23 +478,23 @@ class MyPingPong(mympi):
 
         mypairs = pair.makepairs()
         if self.master:
-            go.log.info("runpingpong: making pairs finished")
+            self.log.info("runpingpong: making pairs finished")
 
         # introduce barrier
         self.comm.barrier()
-        go.log.debug("runpingpong: barrier before real start (map + pairs done)")
+        self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
         runid = 0
         for pair in mypairs:
             if barrier:
-                go.log.debug("runpingpong barrier before pingpong")
+                self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
 
             timing, pmodedetails = self.pingpong(
                 pair[0], pair[1], pmode, dattosend, it=it)
 
             if barrier2:
-                go.log.debug("runpingpong barrier after pingpong")
+                self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
             data[runid] = timing
             runid += 1
@@ -536,46 +537,46 @@ class MyPingPong(mympi):
         if not dat:
             dat = self.makedata()
         if p1 == p2:
-            go.log.debug("pingpong: do nothing p1 == p2")
+            self.log.debug("pingpong: do nothing p1 == p2")
             return -1, details
 
         if (p1 == -1) or (p2 == -1):
-            go.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)", p1, p2)
+            self.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)", p1, p2)
             return -1, details
         if (p1 == -2) or (p2 == -2):
-            go.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)", p1, p2)
+            self.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)", p1, p2)
             return -1, details
 
         if test:
             exe = 'pp=pingpongtest()'
         elif self.rank == p1:
-            exe = 'pp=PingPongSR%s(self.comm,p2)' % pmode
+            exe = 'pp=PingPongSR%s(self.comm,p2,self.log)' % pmode
         elif self.rank == p2:
-            exe = 'pp=PingPongRS%s(self.comm,p1)' % pmode
+            exe = 'pp=PingPongRS%s(self.comm,p1,self.log)' % pmode
         else:
-            go.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
+            self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
             return -1, details
 
         try:
             exec(exe)
         except Exception as err:
-            go.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
+            self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
 
         pp.setdat(dat)
 
         if dummyfirst:
-            go.log.debug("pingpong: dummy first")
+            self.log.debug("pingpong: dummy first")
             pp.dopingpong(1)
 
         if self.master:
-            go.log.info("runpingpong: starting dopingpong")
+            self.log.info("runpingpong: starting dopingpong")
         avg, start, end = pp.dopingpong(it)
         if self.master:
-            go.log.info("runpingpong: end dopingpong")
+            self.log.info("runpingpong: end dopingpong")
 
         timing = [float(avg), float(start[0]), float(end[0])]
 
-        go.log.debug("pingpong p1 %s p2 %s avg/start/end %s", p1, p2, timing)
+        self.log.debug("pingpong p1 %s p2 %s avg/start/end %s", p1, p2, timing)
 
         details.update({
             'ppgroup': pp.group,
@@ -599,7 +600,7 @@ if __name__ == '__main__':
 
     go = simple_option(options)
 
-    m = MyPingPong()
+    m = MyPingPong(go.log)
 
     try:
         fn = os.path.join(getshared(), go.options.output)
