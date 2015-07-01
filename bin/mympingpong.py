@@ -269,13 +269,9 @@ class MyPingPong(mympi):
 
         try:
             mypid = os.getpid()
-<<<<<<< HEAD
         except OSError as err:
             self.log.error("Can't obtain current process id: %s" % err)
-=======
-        except Exception, err:
-            go.log.error("Can't obtain current process id: %s" % err)
->>>>>>> ccb2a8443d81f00df7db46669479b370db8ed7d2
+
 
         # get taskset
         cmd = "taskset -c -p %s" % mypid
@@ -362,64 +358,6 @@ class MyPingPong(mympi):
         go.log.debug("hwlocmap: result map: %s", res)
         return res
 
-<<<<<<< HEAD
-=======
-    def hwlocmapold(self):
-        res = {}
-        exe = "/usr/bin/hwloc-ls"
-        if not os.path.exists(exe):
-            go.log.error("hwlocmap: Can't find exe %s" % exe)
-
-        cmd = "%s --no-useless-caches" % exe
-        ec, txt = self.runrun(cmd, True)  # TODO vsc-base run
-
-        """                                                                     
-        0.9.1                                                                   
-        regw=re.compile(r"^(\s*)(\S.*?)(P#(\d+))?$")                            
-        """
-        regw093 = re.compile(r"^(\s*)(\S.*?)(PU?\s*#(\d+)(?:\s*\(phys=\d+\))?)?$")
-        regw112 = re.compile(r"^(\s*)(\S.*?)(L#(\d+)(\s+\+\s+PU\s+L#(?:\d+)(?:\s*\(P#\d+\))?)?)?$")
-
-        if txt.startswith('System'):
-            regw = regw093
-        elif txt.startswith('Machine'):
-            regw = regw112
-        else:
-            go.log.error("Unknown hwloc-ls output. Starts with %s", txt[0:10])
-
-        # this will be passed as regexp. cleanup some characters
-        regclean = re.compile(r"(\(|\)|\+|\#|\?|\|\s+)")
-        cpumap = {}
-        for l in txt.split("\n"):
-            r = regw.search(l)
-            if not r:
-                continue
-
-            wh = len(r.group(1))
-            whtxt = r.group(2)
-            core = r.group(4)
-
-            ds = cpumap.keys()
-            ds.sort()
-            # tmp will text from level below
-            tmp = ''
-            for d in ds:
-                if d > wh:
-                    del(cpumap[d])
-                if d < wh:
-                    # reuse text from level one below (ds is ordered!)
-                    tmp = cpumap[d]
-
-            if core:
-                res[core] = regclean.sub('', tmp+whtxt)
-            else:
-                # remove all levels higher
-                cpumap[wh] = tmp+whtxt
-
-        go.log.debug("hwlocmap: result map: %s", res)
-        return res
-
->>>>>>> ccb2a8443d81f00df7db46669479b370db8ed7d2
     def makemap(self):
         """
         returns the internal structure of the machine
