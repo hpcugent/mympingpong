@@ -346,3 +346,4 @@ class hwloc(shuffle):
     
         self.log.debug("makepairs %s returns\n%s"%(self.id,res.transpose()))
         return res
+        
