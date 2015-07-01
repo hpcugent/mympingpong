@@ -292,6 +292,7 @@ class MyPingPong(mympi):
             self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
 
         hwlocmap = self.hwlocmap()
+        prop = None
 
         try:
             prop = hwlocmap[int(myproc)]
