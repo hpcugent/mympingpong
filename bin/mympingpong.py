@@ -47,20 +47,15 @@ import copy
 import getopt
 import numpy as n
 
-import logging
+from vsc.utils.generaloption import simple_option
 
 try:
     from mpi4py.MPI import Wtime as wtime
 except ImportError as err:
     print "Warning: wtime could not be imported, some functions might break."
 
-try:
-    from vsc.mympingpong.mympi import mympi, getshared
-except ImportError as err:
-    print "Can't load mympi: %s" % err
-    sys.exit(1)
+from vsc.mympingpong.mympi import mympi, getshared
 
-from vsc.utils.generaloption import simple_option
 
 import vsc.mympingpong.pairs as pairs
 
@@ -279,7 +274,7 @@ class MyPingPong(mympi):
         try:
             mypid = os.getpid()
         except Exception, err:
-            self.log.error("Can't obtain current process id: %s" % err)
+            go.log.error("Can't obtain current process id: %s" % err)
 
         # get taskset
         cmd = "taskset -c -p %s" % mypid
@@ -290,7 +285,7 @@ class MyPingPong(mympi):
             myproc = r.group(1)
             go.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
         else:
-            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
+            go.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
 
         hwlocmap = self.hwlocmap()
 
@@ -439,11 +434,11 @@ class MyPingPong(mympi):
         if type(seed) == int:
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
-            self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
+            go.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         cpumap = self.makemap()
         if self.master:
-            self.log.info("runpingpong: making map finished")
+            go.log.info("runpingpong: making map finished")
 
         res = {
             'myrank': self.rank,
@@ -468,7 +463,7 @@ class MyPingPong(mympi):
             exec(exe)
 
         except Exception as err:
-            self.log.error("Failed to create pair instance %s: %s", pairmode, err)
+            go.log.error("Failed to create pair instance %s: %s", pairmode, err)
 
         pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
@@ -476,7 +471,7 @@ class MyPingPong(mympi):
 
         mypairs = pair.makepairs()
         if self.master:
-            self.log.info("runpingpong: making pairs finished")
+            go.log.info("runpingpong: making pairs finished")
 
         # introduce barrier
         self.comm.barrier()
@@ -559,7 +554,7 @@ class MyPingPong(mympi):
             exec(exe)
 
         except Exception as err:
-            self.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
+            go.log.error("Can't make instance of pingpong in mode %s (test: %s): %s : %s", pmode, test, exe, err)
 
         pp.setdat(dat)
 
@@ -568,10 +563,10 @@ class MyPingPong(mympi):
             pp.dopingpong(1)
 
         if self.master:
-            self.log.info("runpingpong: starting dopingpong")
+            go.log.info("runpingpong: starting dopingpong")
         avg, start, end = pp.dopingpong(iter)
         if self.master:
-            self.log.info("runpingpong: end dopingpong")
+            go.log.info("runpingpong: end dopingpong")
 
         timing = [float(avg), float(start[0]), float(end[0])]
 
