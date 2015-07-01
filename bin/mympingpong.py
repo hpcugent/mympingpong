@@ -314,52 +314,47 @@ class MyPingPong(mympi):
         A dict that maps the absolute Processor Unit ID to its socket-id and its core-id
         """
 
-        res={}
-        xmlout="/tmp/test.xml.%s"%os.getpid()
-        exe="/usr/bin/hwloc-ls"
+        res = {}
+        xmlout = "/tmp/test.xml.%s" % os.getpid()
+        exe = "/usr/bin/hwloc-ls"
         if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s"%exe)
-            
-        cmd="%s --output-format xml %s"%(exe,xmlout)
-        ec,txt=self.runrun(cmd,True)
+            self.log.error("hwlocmap: Can't find exe %s" % exe)
+
+        cmd = "%s --output-format xml %s" % (exe, xmlout)
+        ec, txt = self.runrun(cmd, True)
 
         ## parse xmloutput
-        import xml.dom.minidom
-        doc = xml.dom.minidom.parse(xmlout)
-        os.remove(xmlout)
+        base = etree.parse(xmlout)
 
-        sks=doc.getElementsByTagName('object')
-        map={}
-        #TODO fix xml parsing
-        for sk in sks:
-            if sk.getAttribute('type') == 'Socket':
-                skid=sk.getAttribute('os_index')
-                if not map.has_key(skid):
-                    map[skid]={}
-                crs=sk.getElementsByTagName('object')
-                for cr in crs:
-                    if cr.getAttribute('type') == 'Core':
-                        crid=cr.getAttribute('os_index')
-                        pus=cr.getElementsByTagName('object')
-                        for pu in pus:
-                            if pu.getAttribute('type') == 'PU':
-                                puid=pu.getAttribute('os_index')
-                                map[skid][crid]=puid
+        sks_xpath = '//object[@type="Socket"]'
+        #list of socket ids
+        sks = map(int, base.xpath(sks_xpath + '/@os_index'))
+        self.log.debug("sockets: %s" %sks)
 
-        ## sanity check
-        x=[len(v) for v in map.values()]
-        if not (x.count(x[0]) == len(x)):
-            self.log.error("Something is not correct here. Some sockets have more cores then others. %s"%map)
+        aPU = 0
 
-        crps=x[0]
-        for sk,crs in map.items():
-            for cr,pu in crs.items():
-                cr2="%s"%(int(sk)*crps+int(cr))
-                #t="socket %s core %s abscore %s pu %s"%(sk,cr,cr2,pu)
-                t="socket %s core %s abscore %s"%(sk,cr,cr2)
-                res[cr2]=t
-        
-        self.log.debug("hwlocmap: result map: %s"%res)
+        for x in xrange(len(sks)):
+            cr_xpath = sks_xpath + '[@os_index="' + str(x) + '"]' + '//object[@type="Core"]'
+            #list of core ids in socket x
+            crs = map(int, base.xpath(cr_xpath + '/@os_index'))
+            self.log.debug("cores: %s" %crs)
+
+            for y in xrange(len(crs)):
+                pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]//object[@type="PU"]'
+                #list of PU ids in core y from socket x
+                pus = map(int, base.xpath(pu_xpath + '/@os_index'))
+                self.log.debug("PU's: %s" %pus)
+
+                # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
+                for z in xrange(len(pus)):
+                    #in case of errors, revert back to this
+                    #aPU = sks[x] * len(crs) * len(pus) + pus[z]
+                    t = "socket %s core %s abscore %s" % (sks[x], crs[y], aPU)
+                    res[aPU] = t
+                    aPU += 1
+
+        self.log.debug("result map: %s"%res)
+
         return res
 
 
