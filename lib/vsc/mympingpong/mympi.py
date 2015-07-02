@@ -45,11 +45,8 @@ import zlib
 import cPickle
 import array
 import logging
+import numpy as n
 
-try:
-    import numpy as n
-except Exception as err:
-    self.log.error("Can't load module numpy: %s" % err)
 
 def getshared():
     """
@@ -66,8 +63,6 @@ class mympi:
     def __init__(self, nolog=True, serial=False):
         if not nolog:
             self.log = logging.getLogger()
-
-        logging.getLogger().setLevel(logging.DEBUG)
 
         self.serial = False
         self.pickledelim = "\nPICKLEDELIMITER\n"
@@ -352,43 +347,3 @@ class slave(mympi):
 
     def __init__(self):
         mympi.__init__(self, nolog=False)
-
-if __name__ == '__main__':
-
-    print ' STARTING MYMPI ================================================'
-    import getopt
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "ds")
-    except getopt.GetoptError, err:
-        print str(err)  # will print something like "option -a not recognized"
-        sys.exit(2)
-
-    serial = False
-    debug = False
-    for o, a in opts:
-        if o in ['-s']:
-            serial = True
-        if o in ['-d']:
-            debug = True
-
-    setdebugloglevel(debug)
-
-
-    m = mympi(serial=serial)
-
-    try:
-        fn = os.path.join(getshared(), 'test2')
-    except KeyError as err:
-        # TODO: replace prints with fancylogger
-        print str(err) + 'is not set'
-        sys.exit(3)
-
-    m.setfn(fn)
-
-    if serial:
-        m.read()
-    else:
-        data = '%s' % m.rank
-        m.write(data*250)
-        m.comm.Barrier()
-        m.read()

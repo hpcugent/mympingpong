@@ -34,42 +34,48 @@ logging from easybuild buildLog
 TODO: replace any usage with vsc.utils.fancylogger and remove this module completely
 """
 
-import logging,sys,os
+import logging
+import sys
+import os
 
 try:
     from mpi4py import MPI
-    suffix='%s/%s'%(MPI.COMM_WORLD.Get_rank(),MPI.COMM_WORLD.Get_size())
+    suffix = '%s/%s' % (MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
 except:
-    suffix=''
+    suffix = ''
 
-fm='%(asctime)s %(name)s %(levelname)s '+ suffix +' %(message)s '
+fm = '%(asctime)s %(name)s %(levelname)s ' + suffix + ' %(message)s '
+
 
 class myError(Exception):
+
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
 
 class newLog(logging.Logger):
-    rais=True
+    rais = True
 
-    def error(self,msg,*args,**kwargs):
-        newmsg="err %s %s"%(self.findCaller(),msg)
-        logging.Logger.error(self,msg,*args,**kwargs)
+    def error(self, msg, *args, **kwargs):
+        newmsg = "err %s %s" % (self.findCaller(), msg)
+        logging.Logger.error(self, msg, *args, **kwargs)
         if self.rais:
             raise myError(newmsg)
-    def exception(self,msg,*args):
-        ## don't rasie the exception from within error
-        newmsg="exc %s %s"%(self.findCaller(),msg)
-        self.rais=False
+
+    def exception(self, msg, *args):
+        # don't rasie the exception from within error
+        newmsg = "exc %s %s" % (self.findCaller(), msg)
+        self.rais = False
         #logging.Logger.error(self,*((msg,) + args), **{'exc_info': 1})
-        logging.Logger.exception(self,msg,*args)
-        self.rais=True
+        logging.Logger.exception(self, msg, *args)
+        self.rais = True
         if self.rais:
             raise myError(newmsg)
 
-## redirect standard handler of rootlogger to /dev/null
+# redirect standard handler of rootlogger to /dev/null
 logging.basicConfig(level=logging.ERROR,
                     format=fm,
                     filename='/dev/null'
@@ -77,58 +83,58 @@ logging.basicConfig(level=logging.ERROR,
 
 logging.setLoggerClass(newLog)
 
-formatter=logging.Formatter(fm)
+formatter = logging.Formatter(fm)
 
-knownhandlers=[]
+knownhandlers = []
 
-## new dirty trick for global cross module variable
+# new dirty trick for global cross module variable
 import __builtin__
 try:
-    ## will do nowthing if it exists
+    # will do nowthing if it exists
     __builtin__.maindebug
 except:
-    __builtin__.maindebug=True
+    __builtin__.maindebug = True
+
 
 def setdebugloglevel(deb):
-    __builtin__.maindebug=deb
+    __builtin__.maindebug = deb
 
-def initLog(name=None,typ=None):
+
+def initLog(name=None, typ=None):
     if not typ:
-        typ=name or 'UNKNOWN'
-    
-    log=logging.getLogger(name)
-    
-    debug=__builtin__.maindebug
-    
-    if debug:
-        defaultloglevel=logging.DEBUG
-    else:
-        defaultloglevel=logging.INFO
+        typ = name or 'UNKNOWN'
 
-        
-    exe='hand=logging.StreamHandler(sys.stdout)'
-    pref="name_%s_typ_%s_%s"%(name,typ,exe)
+    log = logging.getLogger(name)
+
+    debug = __builtin__.maindebug
+
+    if debug:
+        defaultloglevel = logging.DEBUG
+    else:
+        defaultloglevel = logging.INFO
+
+    exe = 'hand=logging.StreamHandler(sys.stdout)'
+    pref = "name_%s_typ_%s_%s" % (name, typ, exe)
     if not pref in knownhandlers:
         exec(exe)
         hand.setFormatter(formatter)
-    
+
         log.addHandler(hand)
         knownhandlers.append(pref)
 
-    tmp=logging.getLogger(typ)
+    tmp = logging.getLogger(typ)
 
     tmp.setLevel(defaultloglevel)
 
-    
-    ## init message
+    # init message
     from socket import gethostname
-    tmp.debug("Log initialised with name %s host %s debug %s"%(name,gethostname(),debug))
-    
+    tmp.debug("Log initialised with name %s host %s debug %s" % (name, gethostname(), debug))
+
     return tmp
-    
+
 
 if __name__ == '__main__':
-    log=initLog()
+    log = initLog()
     log.info("Test info")
 
     log.info("Testing debug")

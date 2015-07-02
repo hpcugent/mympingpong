@@ -36,21 +36,22 @@ TODO:
 
 """
 
-import sys
+import copy
 import os
 import re
+import sys
 
-from lxml import etree
-import copy
-import getopt
 import numpy as n
+from lxml import etree
+from mpi4py.MPI import Wtime as wtime
 
+from vsc.mympingpong.mympi import mympi, getshared
+import vsc.mympingpong.pairs as pairs
 from vsc.utils.run import run_simple
 from vsc.utils.generaloption import simple_option
-from vsc.mympingpong.mympi import mympi, getshared
+
+#this needs to be imported after generaloptionsm or its messes with the go logger
 from logging import getLogger
-from mpi4py.MPI import Wtime as wtime
-import vsc.mympingpong.pairs as pairs
 
 
 class PingPongSR(object):
@@ -156,9 +157,12 @@ class PingPongSRfast(PingPongSR):
 
         if it < group:
             group = it
+            self.log.debug("dopingpong: number of iterations is set to group size")
 
-        if it:
+        if it is not None:
             self.setit(it, group)
+        else:
+            self.log.debug("dopingpong: number of iterations is not set")
 
         for x in xrange(it/group):
             """
@@ -176,7 +180,7 @@ class PingPongSRfast(PingPongSR):
             self.start[x] = start
             self.end[x] = end
 
-        avg = n.average((self.end-self.start)/(2.0*group))
+        avg = n.average((self.end-self.start) / (2.0*group))
 
         return avg, self.start, self.end
 
@@ -323,25 +327,25 @@ class MyPingPong(mympi):
 
         aPU = 0
 
-        for x in xrange(len(sks)):
-            cr_xpath = sks_xpath + '[@os_index="' + str(x) + '"]' + '//object[@type="Core"]'
+        for x, sk in enumerate(sks):
+            cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, str(x))
             #list of core ids in socket x
-            crs = map(int, base.xpath(cr_xpath + '/@os_index'))
+            crs = map(int, base.xpath('%s/@os_index' % cr_xpath))
             self.log.debug("cores: %s", crs)
 
-            for y in xrange(len(crs)):
-                pu_xpath = cr_xpath + '[@os_index="' + str(y) + '"]//object[@type="PU"]'
+            for y, cr in enumerate(crs):
+                pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, str(y))
                 #list of PU ids in core y from socket x
-                pus = map(int, base.xpath(pu_xpath + '/@os_index'))
+                pus = map(int, base.xpath('%s/@os_index' % pu_xpath))
                 self.log.debug("PU's: %s", pus)
 
                 # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
-                for z in xrange(len(pus)):
-                    #in case of errors, revert back to this
-                    #aPU = sks[x] * len(crs) * len(pus) + pus[z]
-                    t = "socket %s core %s abscore %s" % (sks[x], crs[y], aPU)
-                    res[aPU] = t
-                    aPU += 1
+                #in case of errors, revert back to this
+                #for z in xrange(len(pus)):
+                #aPU = sks[x] * len(crs) * len(pus) + pus[z]
+                t = "socket %s core %s abscore %s" % (sk, cr, aPU)
+                res[aPU] = t
+                aPU += 1
 
         self.log.debug("result map: %s", res)
 
@@ -362,7 +366,7 @@ class MyPingPong(mympi):
 
         pc, ph = self.getprocinfo()
         myinfo = [self.name, pc, ph]
-        mymap = [myinfo for x in xrange(self.size)]
+        mymap = [myinfo] * self.size
         alltoall = self.comm.alltoall(mymap)
         self.log.debug("Received map %s", alltoall)
 
@@ -426,7 +430,7 @@ class MyPingPong(mympi):
         if isinstance(seed, int):
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
-            self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
+            self.log.raiseException("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         cpumap = self.makemap()
         if self.master:
@@ -470,19 +474,17 @@ class MyPingPong(mympi):
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
         runid = 0
-        for pair in mypairs:
+        for runid, pair in enumerate(mypairs):
             if barrier:
                 self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
 
-            timing, pmodedetails = self.pingpong(
-                pair[0], pair[1], pmode, dattosend, it=it)
+            timing, pmodedetails = self.pingpong(pair[0], pair[1], pmode, dattosend, it=it)
 
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
             data[runid] = timing
-            runid += 1
 
         res['pairs'] = mypairs
         res['data'] = data
