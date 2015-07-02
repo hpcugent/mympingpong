@@ -21,12 +21,27 @@ COMMAND SYNTAX
 -n [NUMBER] 	is the amount of pairs that will be made with the available cores
 
 
+SETTING UP VIRTUALENV
+=====================
+virtualenv -p /usr/bin/python2.7 .$environment
+source .$environment/bin/activate
+
+pip install cython
+pip install matplotlib
+pip install lxml
+pip install vsc-base
+pip install https://github.com/hpcugent/vsc-mympirun/archive/vsc-mympirun-3.4.2.tar.gz 
+
+
+
+
 EXPORTS LAPTOP
 ================
 export PATH=$PATH:~/.local/bin
 export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
 export VSC_SCRATCH=/tmp
 export LOADEDMODULES=abc
+
 
 MODULES
 =======
