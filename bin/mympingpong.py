@@ -104,17 +104,17 @@ class PingPongSR(object):
         # make a copy of the receivebuffer
         self.rcvbuf = copy.deepcopy(self.sndbuf)
 
-    def setnumber(self, number):
-        self.number = number
-        self.start = n.zeros(number, float)
-        self.end = n.zeros(number, float)
+    def setit(self, it):
+        self.it = it
+        self.start = n.zeros(it, float)
+        self.end = n.zeros(it, float)
 
-    def dopingpong(self, number=None):
-        if number:
-            self.setnumber(number)
+    def dopingpong(self, it=None):
+        if it:
+            self.setit(it)
 
         # python float are double
-        for x in xrange(self.number):
+        for x in xrange(self.it):
             self.start[x] = wtime()
             self.run1(self.sndbuf, self.other, self.tag1)
             self.run2(self.rcvbuf, self.other, self.tag2)
@@ -143,24 +143,24 @@ class PingPongSRfast(PingPongSR):
     def setcomm(self):
         self.run1 = self.send
 
-    def setnumber(self, numberall, group):
-        number = numberall/group
+    def setit(self, itall, group):
+        it = itall/group
         self.group = group
-        self.number = numberall
-        self.start = n.zeros(number, float)
-        self.end = n.zeros(number, float)
+        self.it = itall
+        self.start = n.zeros(it, float)
+        self.end = n.zeros(it, float)
 
-    def dopingpong(self, number=None, group=50):
+    def dopingpong(self, it=None, group=50):
         if self.groupforce:
             group = self.groupforce
 
-        if number < group:
-            group = number
+        if it < group:
+            group = it
 
-        if number:
-            self.setnumber(number, group)
+        if it:
+            self.setit(it, group)
 
-        for x in xrange(number/group):
+        for x in xrange(it/group):
             """
             Comm.PingpongSR(self, 
                             rbuf, sbuf, 
@@ -237,9 +237,9 @@ class PingPongRSfast2(PingPongRSfast):
 
 class PingPongtest(PingPongSR):
 
-    def dopingpong(number):
+    def dopingpong(it):
         # python float are double
-        for x in xrange(number):
+        for x in xrange(it):
             self.start[x] = wtime()
             self.end[x] = wtime()
         return self.start, self.end
@@ -407,9 +407,9 @@ class MyPingPong(mympi):
         data: a list of timing data for each pingpong between pairs
         ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
         ppmode: which pingpongmode is being used
-        ppgroup:
-        ppnumber:
-        ppbuiltindummyfirst:
+        ppgroup: pingpongs can be bundled in groups, this is the size of those groups
+        ppiterations: duplicate of iter
+        ppbuiltindummyfirst: True if the pingpong method uses a built in dummyrun
         """
 
         # highest precision mode till now. has 25 internal grouped tests
@@ -515,7 +515,7 @@ class MyPingPong(mympi):
             'ppdummyfirst': dummyfirst,
             'ppmode': pmode,
             'ppgroup': None,
-            'ppnumber': None,
+            'ppiterations': None,
             'ppbuiltindummyfirst': None
         }
 
@@ -566,7 +566,7 @@ class MyPingPong(mympi):
 
         details.update({
             'ppgroup': pp.group,
-            'ppnumber': pp.number,
+            'ppiterations': pp.it,
             'ppbuiltindummyfirst': pp.builtindummyfirst
         })
 
