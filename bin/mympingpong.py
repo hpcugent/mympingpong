@@ -385,7 +385,7 @@ class MyPingPong(mympi):
         seed: a seed for the random number generator, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
-        nr: 
+        nr: the number of pairs that will be made, in other words the sample size
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
@@ -576,7 +576,7 @@ if __name__ == '__main__':
 
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
-        'number': ('set the number', int, 'store', None, 'n'),
+        'number': ('set the amount of samples that will be made', int, 'store', None, 'n'),
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
