@@ -327,24 +327,24 @@ class MyPingPong(mympi):
         aPU = 0
 
         for x, sk in enumerate(sks):
-            cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, str(x))
+            cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, x)
             #list of core ids in socket x
             crs = map(int, base.xpath('%s/@os_index' % cr_xpath))
             self.log.debug("cores: %s", crs)
 
             for y, cr in enumerate(crs):
-                pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, str(y))
+                pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, y)
                 #list of PU ids in core y from socket x
                 pus = map(int, base.xpath('%s/@os_index' % pu_xpath))
                 self.log.debug("PU's: %s", pus)
 
                 # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
                 #in case of errors, revert back to this
-                #for z in xrange(len(pus)):
                 #aPU = sks[x] * len(crs) * len(pus) + pus[z]
-                t = "socket %s core %s abscore %s" % (sk, cr, aPU)
-                res[aPU] = t
-                aPU += 1
+                for pu in pus:
+                    t = "socket %s core %s abscore %s" % (sk, cr, aPU)
+                    res[aPU] = t
+                    aPU += 1
 
         self.log.debug("result map: %s", res)
 
@@ -452,17 +452,17 @@ class MyPingPong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,id=self.rank)" % self.pairmode
+        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank)" % self.pairmode
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
 
         except Exception as err:
-            self.log.error("Failed to create pair instance %s: %s", pairmode, err)
+            self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
         pair.addmap(cpumap, self.rngfilter, self.mapfilter)
 
-        pair.addnr(nr)
+        pair.setnr(nr)
 
         mypairs = pair.makepairs()
         if self.master:
@@ -472,7 +472,6 @@ class MyPingPong(mympi):
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
-        runid = 0
         for runid, pair in enumerate(mypairs):
             if barrier:
                 self.log.debug("runpingpong barrier before pingpong")
@@ -597,11 +596,11 @@ if __name__ == '__main__':
     m.setfn(fn)
 
     if go.options.groupmode == 'incl':
-        m.setpairmode(rngfilter=group)
+        m.setpairmode(rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'groupexcl':
-        m.setpairmode(pairmode=group, rngfilter=group)
+        m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'hwloc':
         # no rngfilter needed (hradcoded to incl)
-        m.setpairmode(pairmode=group)
+        m.setpairmode(pairmode=go.options.groupmode)
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)

@@ -46,80 +46,94 @@ import logging
 
 class pair(object):
 
-    def __init__(self, rng=None, seed=None, id=None):
+    def __init__(self, rng=None, seed=None, pairid=None):
+
         self.log = logging.getLogger()
 
-        self.seed = None
+        # seed is never used, can this be deleted?
+        #self.seed=None
+        #self.nextseed=None         
 
         self.rng = None
         self.origrng = None
 
-        self.rngsize = None
-
         self.map = None
         self.origmap = None
-
         self.revmap = None
-        self.nextseed = None
 
-        self.id = None
+        self.pairid = None
 
         self.mode = self.__class__.__name__
 
         if rng:
-            self.addrng(rng)
-        if type(seed) == int:
-            self.setseed(seed)
-        if type(id) == int:
-            self.addid(id)
+            self.setrng(rng)
+        #if type(seed) == int:
+        #    self.setseed(seed)
+        if isinstance(pairid, int):
+            self.setpairid(pairid)
 
         self.offset = 0
 
-    def setseed(self, seed=None):
+    """ seed is never used, can this be deleted?
+
+    def setseed(self,seed=None):
         if type(seed) == int:
             n.random.seed(seed)
-            self.seed = seed
-            self.nextseed = n.random.random_integers(10000000)
-            self.log.debug("Seed is %s. Nextseed is %s" % (self.seed, self.nextseed))
+            self.seed=seed
+            self.nextseed=n.random.random_integers(10000000)
+            self.log.debug("Seed is %s. Nextseed is %s"%(self.seed, self.nextseed))
         else:
-            self.log.debug("Seed: nothing done: %s (%s)" % (seed, type(seed)))
+            self.log.debug("Seed: nothing done: %s (%s)"%(seed,type(seed)))
+    """
 
-    def addrng(self, rng, start=0, step=1):
-        if type(rng) == int:
+    def setpairid(self, pairid):
+        if isinstance(pairid, int):
+            self.pairid = pairid
+            self.log.debug("Id is %s" % pairid)
+        else:
+            self.log.error("No valid id given: %s (%s)", pairid, type(pairid))
+
+    def setnr(self, nr=None):
+        if not nr:
+            nr = int(rng/2)+1
+        self.nr = nr
+        self.log.debug("Number of samples: %s", nr)
+
+    def setrng(self, rng, start=0, step=1):
+        if isinstance(rng, int):
             self.rng = range(start, rng, step)
-        elif type(rng) == list:
+        elif isinstance(rng, list):
             self.rng = rng[start::step]
         else:
-            self.log.error("addrng: rng is neither int or list: %s (%s)" % (rng, type(rng)))
+            self.log.error("setrng: rng is neither int or list: %s (%s)", rng, type(rng))
 
-        self.rngsize = len(self.rng)
         if not self.origrng:
             # the first time
             self.origrng = copy.deepcopy(self.rng)
-        self.log.debug("addrng: size %s rng %s (srcrng %s %s)" % (self.rngsize, self.rng, rng, type(rng)))
+        self.log.debug("setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
 
     def filterrng(self):
-        if self.rngsize == 0:
-            self.rngsize = 2
-            self.rng = [self.id, -1]
-            self.log.info('filterrng: 0 number of rng provided. Adding self %s and -1.' % self.id)
-        elif self.rngsize % 2 == 1:
-            self.rng += [-2]
-            self.rngsize += 1
-            self.log.info('filterrng: odd number of rng provided. Adding -1.')
+        """makes sure the length of rng is even"""
 
-    def addmap(self, map, rngfilter=None, mapfilter=None):
+        if len(self.rng) == 0:
+            self.rng = [self.pairid, -1]
+            self.log.info('filterrng: 0 number of rng provided. Adding self %s and -1.', self.pairid)
+        elif len(self.rng) % 2 == 1:
+            self.rng += [-2]
+            self.log.info('filterrng: odd number of rng provided. Adding -2.')
+
+    def addmap(self, inmap, rngfilter=None, mapfilter=None):
         """
         Add map: rng -> list of features (eg nodename)
         - what to do with ids that have no properties: add them to a default group or not
         """
-        if map:
+        if inmap:
             if not self.origmap:
                 # only first time copy
-                self.origmap = copy.deepcopy(map)
+                self.origmap = copy.deepcopy(inmap)
         else:
             if self.origmap:
-                map = copy.deepcopy(self.origmap)
+                inmap = copy.deepcopy(self.origmap)
             else:
                 self.log.error("addmap: no map or origmap found")
 
@@ -128,10 +142,10 @@ class pair(object):
             self.log.debug("addmap: mapfilter %s" % mapfilter)
             try:
                 reg = re.compile(r""+mapfilter)
-            except Exception, err:
-                self.log.error("addmap: problem with mapfilter %s:%s" % (mapfilter, err))
-        for k, els in map.items():
-            if type(els) == list:
+            except Exception as err:
+                self.log.error("addmap: problem with mapfilter %s:%s", mapfilter, err)
+        for k, els in inmap.items():
+            if isinstance(els, list):
                 newl = els
             else:
                 newl = [els]
@@ -142,20 +156,19 @@ class pair(object):
                     continue
                 self.map[k].append(el)
 
-        self.log.debug("addmap: map is %s (orig: %s)" % (self.map, map))
-        """
-        Reverse map
-        """
+        self.log.debug("addmap: map is %s (orig: %s)", self.map, map)
+
+        #Reverse map
         self.revmap = {}
         for k, l in self.map.items():
             for p in l:
                 if not self.revmap.has_key(p):
                     self.revmap[p] = []
                 if k in self.revmap[p]:
-                    self.log.error("addmap: already found id %s in revmap for property %s: %s" % (k, p, self.revmap))
+                    self.log.error("addmap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
                 else:
                     self.revmap[p].append(k)
-        self.log.debug("addmap: revmap is %s" % (self.revmap))
+        self.log.debug("addmap: revmap is %s", self.revmap)
 
         if not rngfilter:
             return
@@ -165,56 +178,43 @@ class pair(object):
         - then either include or exclude them
         - if this id has no property: do nothing at all
         """
-        self.log.debug("addmap: rngfilter %s" % rngfilter)
+        self.log.debug("addmap: rngfilter %s", rngfilter)
         try:
-            props = self.map[self.id]
+            props = self.map[self.pairid]
         except:
             props = []
-            self.log.debug("No props found for id %s" % self.id)
+            self.log.debug("No props found for id %s", self.pairid)
         ids = []
         for p in props:
-            for id in self.revmap[p]:
-                if (id in self.rng) and (id not in ids):
-                    ids.append(id)
+            for x in self.revmap[p]:
+                if (x in self.rng) and (x not in ids):
+                    ids.append(x)
 
         ids.sort()
-        self.log.debug("addmap: props %s ids %s" % (props, ids))
+        self.log.debug("addmap: props %s ids %s", props, ids)
         if rngfilter == 'incl':
             # use only these ids to make pairs
-            self.addrng(ids)
+            self.setrng(ids)
         elif rngfilter == 'excl':
             """
             This does not do what it's supposed to
             - better not use it like this
             """
             new = []
-            for id in self.rng:
-                if not id in ids:
-                    new.append(id)
-            if not self.id in new:
-                new.append(self.id)
+            for x in self.rng:
+                if not x in ids:
+                    new.append(x)
+            if not self.pairid in new:
+                new.append(self.pairid)
             new.sort()
 
-            self.addrng(new)
+            self.setrng(new)
         elif rngfilter == 'groupexcl':
             # do nothing
-            self.log.debug('addmap: rngfilter %s: do nothing' % rngfilter)
+            self.log.debug('addmap: rngfilter %s: do nothing', rngfilter)
             pass
         else:
-            self.log.error('addmap: unknown rngfilter %s' % rngfilter)
-
-    def addid(self, id):
-        if type(id) == int:
-            self.id = id
-            self.log.debug("Id is %s" % id)
-        else:
-            self.log.error("No valid id given: %s (%s)" % (id, type(id)))
-
-    def addnr(self, nr=None):
-        if not nr:
-            nr = int(rng/2)+1
-        self.nr = nr
-        self.log.debug("Number of samples: %s" % nr)
+            self.log.error('addmap: unknown rngfilter %s', rngfilter)
 
     def makepairs(self):
         """
@@ -227,19 +227,19 @@ class pair(object):
 
         res = n.ones((self.nr, 2), int)*-1
 
-        if (type(self.id) == int) and (not self.id in self.rng):
-            self.log.debug("makepairs: %s not in list of ranks" % self.id)
+        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+            self.log.debug("makepairs: %s not in list of ranks", self.pairid)
             return res
 
         a = n.array(self.rng)
         for i in xrange(self.nr):
             res[i] = self.new(a, i)
 
-        self.log.debug("makepairs %s returns\n%s" % (self.id, res.transpose()))
+        self.log.debug("makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
 
     def new(self):
-        self.log.error("New not implemented for mode %s" % self.mode)
+        self.log.error("New not implemented for mode %s", self.mode)
 
 
 class shift(pair):
@@ -248,33 +248,42 @@ class shift(pair):
     A this moment, this doesn't do a lot
     """
 
-    def new(self, x, iter):
-        # iter as shift
-        b = n.roll(x, self.offset+iter).reshape(self.rngsize/2, 2)
+    def new(self, x, iteration):
+        # iteration as shift
+        b = n.roll(x, self.offset+iteration).reshape(len(self.rng)/2, 2)
         try:
-            res = b[n.where(b == self.id)[0][0]]
-        except Exception, err:
-            self.log.error("new: failed to pick element for id %s from %s" % (self.id, b))
+            res = b[n.where(b == self.pairid)[0][0]]
+        except Exception as err:
+            self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
         return res
 
 
 class shuffle(pair):
 
-    def new(self, x, iter):
+    def new(self, x, iteration):
+
+        #x = array of rng
         n.random.shuffle(x)
-        b = x.reshape(self.rngsize/2, 2)
+
+        #convert to matrix with height len(self.rng)/2 and width 2
+        b = x.reshape(len(self.rng)/2, 2)
+
         try:
-            res = b[n.where(b == self.id)[0][0]]
-        except Exception, err:
-            self.log.error("new: failed to pick element for id %s from %s" % (self.id, b))
+            #n.where(b == self.pairid)[0] returns a list of indices of every element in b that equals pairid
+            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
+            res = b[n.where(b == self.pairid)[0][0]]
+        except Exception as err:
+            self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
         return res
 
 
 class groupexcl(pair):
 
-    def new(self, x, iter):
+    def new(self, x, iteration):
+        
+        # seed is never used, can this be deleted?
         # reseed deterministically because the run of this function is not equal for all values of self.id
-        self.setseed(self.nextseed)
+        #self.setseed(self.nextseed)
 
         y = x.copy()
         while y.size > 0:
@@ -285,18 +294,18 @@ class groupexcl(pair):
                 props = self.map[luckyid]
             except:
                 props = []
-                self.log.debug("new: No props found for id %s" % luckyid)
+                self.log.debug("new: No props found for id %s", luckyid)
             ids = []
             for p in props:
-                for id in self.revmap[p]:
-                    if (id in y) and (id not in ids):
-                        ids.append(id)
+                for x in self.revmap[p]:
+                    if (x in y) and (x not in ids):
+                        ids.append(x)
             neww = []
-            for id in y:
-                if id == luckyid:
+            for x in y:
+                if x == luckyid:
                     continue
-                if not id in ids:
-                    neww.append(id)
+                if not x in ids:
+                    neww.append(x)
             neww.sort()
 
             if len(neww) == 0:
@@ -306,8 +315,8 @@ class groupexcl(pair):
                 n.random.shuffle(z)
                 otherluckyid = z[0]
 
-            self.log.debug("new: id %s: Found other luckyid %s for luckyid %s" % (self.id, otherluckyid, luckyid))
-            if self.id in [luckyid, otherluckyid]:
+            self.log.debug("new: id %s: Found other luckyid %s for luckyid %s", self.pairid, otherluckyid, luckyid)
+            if self.pairid in [luckyid, otherluckyid]:
                 return n.array([luckyid, otherluckyid])
             else:
                 for iidd in [luckyid, otherluckyid]:
@@ -335,8 +344,8 @@ class hwloc(shuffle):
 
         res = n.ones((self.nr, 2), int)*-1
 
-        if (type(self.id) == int) and (not self.id in self.rng):
-            self.log.debug("makepairs: %s not in list of ranks" % self.id)
+        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+            self.log.debug("makepairs: %s not in list of ranks", self.pairid)
             return res
 
         hwlocid = 0
@@ -345,7 +354,7 @@ class hwloc(shuffle):
         for i in xrange(self.nr/subgroup):
             # restore rng
             self.rng = copy.deepcopy(self.origrng)
-            self.rngsize = len(self.rng)
+
             # remap
             self.addmap(None, rngfilter='incl', mapfilter=hwlocs[hwlocid])
 
@@ -357,5 +366,5 @@ class hwloc(shuffle):
 
             hwlocid = (hwlocid+1) % (len(hwlocs))
 
-        self.log.debug("makepairs %s returns\n%s" % (self.id, res.transpose()))
+        self.log.debug("makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
