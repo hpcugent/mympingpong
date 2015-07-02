@@ -226,7 +226,7 @@ class Pair(object):
         self.log.error("New not implemented for mode %s", self.mode)
 
 
-class Shift(pair):
+class Shift(Pair):
 
     """
     A this moment, this doesn't do a lot
@@ -242,7 +242,7 @@ class Shift(pair):
         return res
 
 
-class Shuffle(pair):
+class Shuffle(Pair):
 
     def new(self, x, iteration):
 
@@ -261,7 +261,7 @@ class Shuffle(pair):
         return res
 
 
-class Groupexcl(pair):
+class Groupexcl(Pair):
 
     def new(self, x, iteration):
         
@@ -303,7 +303,7 @@ class Groupexcl(pair):
                     y = n.delete(y, n.where(y == iidd)[0])
 
 
-class Hwloc(shuffle):
+class Hwloc(Shuffle):
 
     def makepairs(self):
         """

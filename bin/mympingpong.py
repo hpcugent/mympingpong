@@ -375,7 +375,7 @@ class MyPingPong(mympi):
         self.log.debug("makemap result: %s", res)
         return res
 
-    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
+    def setpairmode(self, pairmode='Shuffle', rngfilter=None, mapfilter=None):
         self.pairmode = pairmode
         self.rngfilter = rngfilter
         self.mapfilter = mapfilter
@@ -426,10 +426,10 @@ class MyPingPong(mympi):
             nr = int(self.size/2)+1
 
         if not self.pairmode:
-            self.pairmode = 'shuffle'
+            self.pairmode = 'Shuffle'
         if isinstance(seed, int):
             self.setseed(seed)
-        elif self.pairmode in ['shuffle']:
+        elif self.pairmode in ['Shuffle']:
             self.log.raiseException("Runpingpong in mode shuffle and no seeding: this will never work.")
 
         cpumap = self.makemap()
@@ -596,11 +596,11 @@ if __name__ == '__main__':
         sys.exit(3)
     m.setfn(fn)
 
-    if go.options.groupmode == 'incl':
+    if go.options.groupmode == 'Incl':
         m.setpairmode(rngfilter=go.options.groupmode)
-    elif go.options.groupmode == 'groupexcl':
+    elif go.options.groupmode == 'Groupexcl':
         m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
-    elif go.options.groupmode == 'hwloc':
+    elif go.options.groupmode == 'Hwloc':
         # no rngfilter needed (hradcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
