@@ -44,7 +44,7 @@ import numpy as n
 import logging
 
 
-class pair(object):
+class Pair(object):
 
     def __init__(self, rng=None, seed=None, pairid=None):
 
@@ -226,7 +226,7 @@ class pair(object):
         self.log.error("New not implemented for mode %s", self.mode)
 
 
-class shift(pair):
+class Shift(pair):
 
     """
     A this moment, this doesn't do a lot
@@ -242,7 +242,7 @@ class shift(pair):
         return res
 
 
-class shuffle(pair):
+class Shuffle(pair):
 
     def new(self, x, iteration):
 
@@ -261,7 +261,7 @@ class shuffle(pair):
         return res
 
 
-class groupexcl(pair):
+class Groupexcl(pair):
 
     def new(self, x, iteration):
         
@@ -303,7 +303,7 @@ class groupexcl(pair):
                     y = n.delete(y, n.where(y == iidd)[0])
 
 
-class hwloc(shuffle):
+class Hwloc(shuffle):
 
     def makepairs(self):
         """
