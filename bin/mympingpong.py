@@ -114,7 +114,6 @@ class PingPongSR(object):
         if it:
             self.setit(it)
 
-        # python float are double
         for x in xrange(self.it):
             self.start[x] = wtime()
             self.run1(self.sndbuf, self.other, self.tag1)

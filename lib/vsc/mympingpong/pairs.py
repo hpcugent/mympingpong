@@ -44,7 +44,7 @@ import numpy as n
 import logging
 
 
-class pair:
+class pair(object):
 
     def __init__(self, rng=None, seed=None, id=None):
         self.log = logging.getLogger()
