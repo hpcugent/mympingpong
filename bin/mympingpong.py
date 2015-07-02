@@ -377,7 +377,7 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def runpingpong(self, seed=None, msgsize=1024, it=None, nr=None, barrier=True):
+    def runpingpong(self, seed=None, msgsize=1024, it=20, nr=None, barrier=True):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -417,10 +417,9 @@ class MyPingPong(mympi):
         barrier2 = False
 
         dattosend = self.makedata(l=msgsize)
+
         if not nr:
             nr = int(self.size/2)+1
-        if not it:
-            it = go.options.iterations
 
         if not self.pairmode:
             self.pairmode = 'shuffle'
