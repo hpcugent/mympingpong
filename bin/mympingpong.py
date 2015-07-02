@@ -372,6 +372,7 @@ class MyPingPong(mympi):
         res = {}
         for x in xrange(self.size):
             res[x] = alltoall[x]
+        self.log.debug("makemap result: %s", res)
         return res
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
@@ -460,7 +461,7 @@ class MyPingPong(mympi):
         except Exception as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
-        pair.addmap(cpumap, self.rngfilter, self.mapfilter)
+        pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
 
         pair.setnr(nr)
 

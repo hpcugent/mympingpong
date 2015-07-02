@@ -48,16 +48,12 @@ class pair(object):
 
     def __init__(self, rng=None, seed=None, pairid=None):
 
-        self.log = logging.getLogger()
-
-        # seed is never used, can this be deleted?
-        #self.seed=None
-        #self.nextseed=None         
+        self.log = logging.getLogger()   
 
         self.rng = None
         self.origrng = None
 
-        self.map = None
+        self.cpumap = None
         self.origmap = None
         self.revmap = None
 
@@ -67,24 +63,10 @@ class pair(object):
 
         if rng:
             self.setrng(rng)
-        #if type(seed) == int:
-        #    self.setseed(seed)
         if isinstance(pairid, int):
             self.setpairid(pairid)
 
         self.offset = 0
-
-    """ seed is never used, can this be deleted?
-
-    def setseed(self,seed=None):
-        if type(seed) == int:
-            n.random.seed(seed)
-            self.seed=seed
-            self.nextseed=n.random.random_integers(10000000)
-            self.log.debug("Seed is %s. Nextseed is %s"%(self.seed, self.nextseed))
-        else:
-            self.log.debug("Seed: nothing done: %s (%s)"%(seed,type(seed)))
-    """
 
     def setpairid(self, pairid):
         if isinstance(pairid, int):
@@ -122,53 +104,55 @@ class pair(object):
             self.rng += [-2]
             self.log.info('filterrng: odd number of rng provided. Adding -2.')
 
-    def addmap(self, inmap, rngfilter=None, mapfilter=None):
+    def setcpumap(self, cpumapin, rngfilter=None, mapfilter=None):
+
         """
-        Add map: rng -> list of features (eg nodename)
+        setcpumap: rng -> list of features (eg nodename)
         - what to do with ids that have no properties: add them to a default group or not
         """
-        if inmap:
+
+        if cpumapin:
             if not self.origmap:
-                # only first time copy
-                self.origmap = copy.deepcopy(inmap)
+                self.origmap = copy.deepcopy(cpumapin)
         else:
             if self.origmap:
-                inmap = copy.deepcopy(self.origmap)
+                cpumapin = copy.deepcopy(self.origmap)
             else:
-                self.log.error("addmap: no map or origmap found")
+                self.log.error("setcpumap: no map or origmap found")
 
-        self.map = {}
+
+        self.cpumap = {}
         if mapfilter:
-            self.log.debug("addmap: mapfilter %s" % mapfilter)
+            self.log.debug("setcpumap: mapfilter %s" % mapfilter)
             try:
                 reg = re.compile(r""+mapfilter)
             except Exception as err:
-                self.log.error("addmap: problem with mapfilter %s:%s", mapfilter, err)
-        for k, els in inmap.items():
+                self.log.error("setcpumap: problem with mapfilter %s:%s", mapfilter, err)
+        for k, els in cpumapin.items():
             if isinstance(els, list):
                 newl = els
             else:
                 newl = [els]
 
-            self.map[k] = []
+            self.cpumap[k] = []
             for el in newl:
                 if mapfilter and not reg.search(el):
                     continue
-                self.map[k].append(el)
+                self.cpumap[k].append(el)
 
-        self.log.debug("addmap: map is %s (orig: %s)", self.map, map)
+        self.log.debug("setcpumap: map is %s (orig: %s)", self.cpumap, cpumapin)
 
         #Reverse map
         self.revmap = {}
-        for k, l in self.map.items():
+        for k, l in self.cpumap.items():
             for p in l:
                 if not self.revmap.has_key(p):
                     self.revmap[p] = []
                 if k in self.revmap[p]:
-                    self.log.error("addmap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
+                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
                 else:
                     self.revmap[p].append(k)
-        self.log.debug("addmap: revmap is %s", self.revmap)
+        self.log.debug("setcpumap: revmap is %s", self.revmap)
 
         if not rngfilter:
             return
@@ -178,9 +162,9 @@ class pair(object):
         - then either include or exclude them
         - if this id has no property: do nothing at all
         """
-        self.log.debug("addmap: rngfilter %s", rngfilter)
+        self.log.debug("setcpumap: rngfilter %s", rngfilter)
         try:
-            props = self.map[self.pairid]
+            props = self.cpumap[self.pairid]
         except:
             props = []
             self.log.debug("No props found for id %s", self.pairid)
@@ -191,7 +175,7 @@ class pair(object):
                     ids.append(x)
 
         ids.sort()
-        self.log.debug("addmap: props %s ids %s", props, ids)
+        self.log.debug("setcpumap: props %s ids %s", props, ids)
         if rngfilter == 'incl':
             # use only these ids to make pairs
             self.setrng(ids)
@@ -211,10 +195,10 @@ class pair(object):
             self.setrng(new)
         elif rngfilter == 'groupexcl':
             # do nothing
-            self.log.debug('addmap: rngfilter %s: do nothing', rngfilter)
+            self.log.debug('setcpumap: rngfilter %s: do nothing', rngfilter)
             pass
         else:
-            self.log.error('addmap: unknown rngfilter %s', rngfilter)
+            self.log.error('setcpumap: unknown rngfilter %s', rngfilter)
 
     def makepairs(self):
         """
@@ -281,17 +265,13 @@ class groupexcl(pair):
 
     def new(self, x, iteration):
         
-        # seed is never used, can this be deleted?
-        # reseed deterministically because the run of this function is not equal for all values of self.id
-        #self.setseed(self.nextseed)
-
         y = x.copy()
         while y.size > 0:
             n.random.shuffle(y)
             luckyid = y[0]
 
             try:
-                props = self.map[luckyid]
+                props = self.cpumap[luckyid]
             except:
                 props = []
                 self.log.debug("new: No props found for id %s", luckyid)
@@ -356,7 +336,7 @@ class hwloc(shuffle):
             self.rng = copy.deepcopy(self.origrng)
 
             # remap
-            self.addmap(None, rngfilter='incl', mapfilter=hwlocs[hwlocid])
+            self.setcpumap(None, rngfilter='incl', mapfilter=hwlocs[hwlocid])
 
             self.filterrng()
 
