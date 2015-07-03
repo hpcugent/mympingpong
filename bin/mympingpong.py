@@ -399,9 +399,7 @@ class MyPingPong(mympi):
         Returns:
         nothing, but will write a dict to a file defined by the -f parameter.
 
-        # => not used in mympingponganalysis
-
-        #myrank: MPI jobrank of the task
+        myrank: MPI jobrank of the task
         nr_tests: number of tests, given by the -n argument
         totalranks: total amount of MPI jobs
         #name: the MPI processor name
