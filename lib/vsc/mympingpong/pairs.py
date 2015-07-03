@@ -45,7 +45,7 @@ import numpy as n
 
 class Pair(object):
 
-    def __init__(self, rng=None, seed=None, pairid=None, logger=None):
+    def __init__(self, rng=None, pairid=None, logger=None):
 
         self.log = logger
 
@@ -173,6 +173,16 @@ class Pair(object):
         return dictout 
      
     def applyrngfilter(self,rngfilter):
+        """
+        filter rng based on information from cpumap
+
+        incl: 
+
+        excl: not implemented
+
+        groupexcl: do nothing
+
+        """
         """
         Collect relevant ids
         - then either include or exclude them

@@ -381,12 +381,11 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def runpingpong(self, seed=None, msgsize=1024, it=20, nr=None, barrier=True):
+    def runpingpong(self, msgsize=1024, it=20, nr=None, barrier=True):
         """
         makes a list of pairs and calls pingpong on those
 
         Arguments:
-        seed: a seed for the random number generator, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
         nr: the number of pairs that will be made, in other words the sample size
@@ -395,25 +394,27 @@ class MyPingPong(mympi):
         Returns:
         nothing, but will write a dict to a file defined by the -f parameter.
 
-        myrank: MPI jobrank of the task
+        # => not used in mympingponganalysis
+
+        #myrank: MPI jobrank of the task
         nr_tests: number of tests, given by the -n argument
         totalranks: total amount of MPI jobs
-        name: the MPI processor name
+        #name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
         pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf Shuffle)
-        mapfilter: partially defines the way that pairs are generated
-        rngfilter: partially defines the way that pairs are generated
-        ppbarrier: wether or not a barrier is used during the run
-        mycore: the processor unit that is being used for the task
-        myhwloc: the socket id and core id of the aformentioned processor unit
-        pairs: a list of pairs that has been used in the test
-        data: a list of timing data for each pingpong between pairs
-        ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
+        #mapfilter: partially defines the way that pairs are generated
+        #rngfilter: partially defines the way that pairs are generated
+        #ppbarrier: wether or not a barrier is used during the run
+        #mycore: the processor unit that is being used for the task
+        #myhwloc: the socket id and core id of the aformentioned processor unit
+        #pairs: a list of pairs that has been used in the test
+        #data: a list of timing data for each pingpong between pairs
+        #ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
-        ppbuiltindummyfirst: True if the pingpong method uses a built in dummyrun
+        #ppbuiltindummyfirst: True if the pingpong method uses a built in dummyrun
         """
 
         # highest precision mode till now. has 25 internal grouped tests
@@ -427,11 +428,7 @@ class MyPingPong(mympi):
 
         if not self.pairmode:
             self.pairmode = 'Shuffle'
-        if isinstance(seed, int):
-            self.setseed(seed)
-        elif self.pairmode in ['Shuffle']:
-            self.log.raiseException("Runpingpong in mode shuffle and no seeding: this will never work.")
-
+ 
         cpumap = self.makemap()
         if self.master:
             self.log.info("runpingpong: making map finished")
@@ -453,7 +450,7 @@ class MyPingPong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
+        exe = "pair=pairs.%s(rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
@@ -582,7 +579,6 @@ if __name__ == '__main__':
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
         'output': ('set the outputfile', str, 'store', 'test2', 'f'),
-        'seed': ('set the seed', int, 'store', 2, 's')
     }
 
     go = simple_option(options)
@@ -604,4 +600,4 @@ if __name__ == '__main__':
         # no rngfilter needed (hradcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
+    m.runpingpong(msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
