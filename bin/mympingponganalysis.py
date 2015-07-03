@@ -26,345 +26,286 @@
 
 """
 @author: Stijn De Weirdt (Ghent University)
-Classes to generate pairs 
-TODO:
- - faster generation of random pairs: 
-  - have each rank generate a set of pairs, using as seed the main seed + the rank
-  - exchange (alltoall?) the generated pairs
+
+Generate the plots
 """
 
 import sys
 import os
 import re
-import copy
+from vsc.mympingpong.mympi import mympi
+from vsc.utils.generaloption import simple_option
 
-import numpy as n
 
+class pingponganalysis:
 
-class Pair(object):
-
-    def __init__(self, rng=None, pairid=None, logger=None):
-
+    def __init__(self, logger):
         self.log = logger
 
-        self.rng = None
-        self.origrng = None
-
-        self.cpumap = None
-        self.origmap = None
-        self.revmap = None
-
-        self.pairid = None
-
-        self.mode = self.__class__.__name__
-
-        if rng:
-            self.setrng(rng)
-        if pairid:
-            self.setpairid(pairid)
-
-        self.offset = 0
-
-    def setpairid(self, pairid):
-        if isinstance(pairid, int):
-            self.pairid = pairid
-            self.log.debug("PAIRS: Id is %s" % pairid)
-        else:
-            self.log.error("No valid id given: %s (%s)", pairid, type(pairid))
-
-    def setnr(self, nr=None):
-        if not nr:
-            nr = int(rng/2)+1
-        self.nr = nr
-        self.log.debug("PAIRS: Number of samples: %s", nr)
-
-    def setrng(self, rng, start=0, step=1):
-        """
-        set self.rng
-        Arguments:
-        rng: what self.rng will be set to, can be an int or a list
-        start: if rng is a list and start is given, slice rng starting from here
-        step: if rng is a list and step is given, only write every $step element to self.rng
-        """
-        if isinstance(rng, int):
-            self.rng = range(start, rng, step)
-        elif isinstance(rng, list):
-            self.rng = rng[start::step]
-        else:
-            self.log.error("setrng: rng is neither int or list: %s (%s)", rng, type(rng))
-
-        if not self.origrng:
-            # origrng is empty, so this rng is the original rng
-            self.origrng = copy.deepcopy(self.rng)
-        self.log.debug("PAIRS: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
-
-    def filterrng(self):
-        """makes sure rng has an even & nonzero amount of elements"""
-
-        if len(self.rng) == 0:
-            self.rng = [self.pairid, -1]
-            self.log.info('filterrng: 0 number of rng provided. Adding self %s and -1.', self.pairid)
-        elif len(self.rng) % 2 == 1:
-            self.rng += [-2]
-            self.log.info('filterrng: odd number of rng provided. Adding -2.')
-
-    def setcpumap(self, cpumapin, rngfilter=None, mapfilter=None):
-        """set the cpumap and the revmap, apply filters when necessary"""
-
-        if cpumapin:
-            if not self.origmap:
-                self.origmap = copy.deepcopy(cpumapin)
-        else:
-            if self.origmap:
-                cpumapin = copy.deepcopy(self.origmap)
-            else:
-                self.log.error("setcpumap: no map or origmap found")
-
-        if mapfilter:
-            self.cpumap = self.applymapfilter(mapfilter)
-        else:
-            self.cpumap = cpumapin
-
-        #Reverse map
-        self.revmap = {}
-        for k, l in self.cpumap.items():
-            for p in l:
-                if not self.revmap.has_key(p):
-                    self.revmap[p] = []
-                if k in self.revmap[p]:
-                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
-                else:
-                    self.revmap[p].append(k)
-        self.log.debug("PAIRS: setcpumap: revmap is %s", self.revmap)
-
-        if rngfilter:
-           self.applyrngfilter(rngfilter) 
-
-    def applymapfilter(self,dictin,mapfilter):
-        """
-        filter out the keyvalue pairs in dictin that contain $mapfilter
-        mapfilter is currently never used, so this block can be discarded if the feature is scrapped
-        """
-
-        dictout = {}
-
-        self.log.debug("PAIRS: applymapfilter: mapfilter %s" % mapfilter)
         try:
-            reg = re.compile(r""+mapfilter)
-        except Exception as err:
-            self.log.error("applymapfilter: problem with compiling the regex for mapfilter %s:%s", mapfilter, err)
-
-        for k, els in dictin.items():
-            if isinstance(els, list):
-                newl = els
-            else:
-                newl = [els]
-
-            dictout[k] = []
-            for el in newl:
-                if mapfilter and not reg.search(el):
-                    continue
-                dictout[k].append(el)
-
-        self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
-        return dictout 
-     
-    def applyrngfilter(self,rngfilter):
-        """
-        filter rng based on information from cpumap
-        incl: 
-        excl: not implemented
-        groupexcl: do nothing
-        """
-        """
-        Collect relevant ids
-        - then either include or exclude them
-        - if this id has no property: do nothing at all
-        """
-
-        self.log.debug("PAIRS: applyrngfilter: rngfilter %s", rngfilter)
-        try:
-            props = self.cpumap[self.pairid]
-        except:
-            props = []
-            self.log.debug("PAIRS: No props found for id %s", self.pairid)
-
-        ids = []
-        for p in props:
-            for x in self.revmap[p]:
-                if (x in self.rng) and (x not in ids):
-                    ids.append(x)
-        ids.sort()
-        self.log.debug("PAIRS: applyrngfilter: props %s ids %s", props, ids)
-
-        if rngfilter == 'incl':
-            # use only these ids to make pairs
-            self.setrng(ids)
-        elif rngfilter == 'excl':
-            """
-            This does not do what it's supposed to
-            - better not use it like this
-            """
-            new = []
-            for x in self.rng:
-                if not x in ids:
-                    new.append(x)
-            if not self.pairid in new:
-                new.append(self.pairid)
-            new.sort()
-
-            self.setrng(new)
-        elif rngfilter == 'groupexcl':
-            # do nothing
-            self.log.debug('PAIRS: applyrngfilter: rngfilter %s: do nothing', rngfilter)
-            pass
-        else:
-            self.log.error('PAIRS: applyrngfilter: unknown rngfilter %s', rngfilter)
-
-    def makepairs(self):
-        """
-        For a given set of ranks, create pairs
-        - shuffle ranks + make pairs 
-        - repeat nr times 
-        """
-        self.filterrng()
-
-        #creates a matrix of minus ones, with height = self.nr and width = 2
-        res = n.ones((self.nr, 2), int)*-1
-
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
-            return res
-
-        rngarray = n.array(self.rng)
-        for i in xrange(self.nr):
-            res[i] = self.new(rngarray, i)
-
-        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
-        return res
-
-    def new(self):
-        self.log.error("New not implemented for mode %s", self.mode)
-
-
-class Shift(Pair):
-
-    """
-    A this moment, this doesn't do a lot
-    """
-
-    def new(self, rngarray, iteration):
-        # iteration as shift
-        b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
-        try:
-            res = b[n.where(b == self.pairid)[0][0]]
-        except Exception as err:
-            self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
-        return res
-
-
-class Shuffle(Pair):
-
-    def new(self, rngarray, iteration):
-
-        n.random.shuffle(rngarray)
-
-        #convert to matrix with height len(self.rng)/2 and width 2
-        b = rngarray.reshape(len(self.rng)/2, 2)
+            global mp
+            import matplotlib as mp
+        except Exception, err:
+            self.log.error("Failed to load matplotlib: %s" % err)
 
         try:
-            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
-            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
-            res = b[n.where(b == self.pairid)[0][0]]
-        except Exception as err:
-            self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
-        return res
+            global n
+            import numpy as n
+        except Exception, err:
+            self.log.error("Failed to load numpy: %s" % err)
 
+        self.data = None
+        self.count = None
+        self.fail = None
+        self.nodemap = None
 
-class Groupexcl(Pair):
+        # use multiplication of 10e6 (ie microsec)
+        self.scaling = 1e6
 
-    def new(self, rngar, iteration):
-        
-        rngarray = rngar.copy()
-        while rngarray.size > 0:
-            n.random.shuffle(rngarray)
-            luckyid = rngarray[0]
+        self.metatags = ['totalranks', 'msgsize', 'nr_tests', 'iter',
+                         'uniquenodes', 'pairmode', 'ppmode', 'ppgroup', 'ppiterations']
+        self.meta = None
 
+        self.cmap = None
+
+    def collect(self, ppdata):
+        """ 
+        Data in pingpong format
+        - list of dictionaries
+        - each disctionay with own rank/hostname
+        -- pairs : coordinates
+        -- data : data
+        """
+        self.log.debug("collect ppdata %s" % ppdata)
+
+        shortname = True
+
+        meta = {}
+        for m in self.metatags:
             try:
-                props = self.cpumap[luckyid]
+                meta[m] = ppdata[0][m]
             except:
-                props = []
-                self.log.debug("PAIRS: new: No props found for id %s", luckyid)
-            ids = []
-            for p in props:
-                for x in self.revmap[p]:
-                    if (x in rngarray) and (x not in ids):
-                        ids.append(x)
-            neww = []
-            for x in rngarray:
-                if x == luckyid:
+                meta[m] = 'UNKNOWN'
+
+        meta['domain'] = '.'.join(ppdata[0]['name'].split('.')[1:])
+        size = meta['totalranks']
+
+        data = n.zeros((size, size), float)
+        count = n.zeros((size, size), float)
+        fail = n.zeros((size, 1), float)
+        nodemap = ['']*size
+        for el in ppdata:
+            if shortname:
+                nodemap[el['myrank']] = el['name'].split('.')[0]
+            else:
+                nodemap[el['myrank']] = el['name']
+            for i in xrange(el['nr_tests']):
+                ind = el['pairs'][i]
+                if (-1 in ind) or (-2 in ind):
+                    #self.log.debug("No valid data for pair %s"%ind)
+                    fail[ind[n.where(ind > -1)[0][0]]] += 1
                     continue
-                if not x in ids:
-                    neww.append(x)
-            neww.sort()
+                data[ind[0]][ind[1]] += el['data'][i][0]
+                count[ind[0]][ind[1]] += 1
 
-            if len(neww) == 0:
-                otherluckyid = -1
-            else:
-                z = n.array(neww)
-                n.random.shuffle(z)
-                otherluckyid = z[0]
+        # transform into array
+        nodemap = n.array(nodemap)
+        meta['uniquenodes'] = n.unique(nodemap).size
 
-            self.log.debug(
-                "PAIRS: new: id %s: Found other luckyid %s for luckyid %s", self.pairid, otherluckyid, luckyid)
-            if self.pairid in [luckyid, otherluckyid]:
-                return n.array([luckyid, otherluckyid])
-            else:
-                for iidd in [luckyid, otherluckyid]:
-                    rngarray = n.delete(rngarray, n.where(rngarray == iidd)[0])
+        # renormalise
+        data = data*self.scaling
+        data = data/n.where(count == 0, 1, count)
+        # get rid of Nan?
 
+        self.data = data
+        self.log.debug("collect data:\n%s" % data)
+        self.count = count
+        self.log.debug("collect count:\n%s" % count)
+        self.fail = fail
+        self.log.debug("collect fail:\n%s" % fail)
+        self.nodemap = nodemap
+        self.log.debug("collect nodemap:\n%s" % nodemap)
+        self.meta = meta
+        self.log.debug("collect meta:\n%s" % meta)
 
-class Hwloc(Shuffle):
+    def addtext(self, meta, sub, fig):
+        self.log.debug("addtext")
+        import matplotlib.patches as patches
 
-    def makepairs(self):
+        sub.set_axis_off()
+
+        # build a rectangle in axes coords
+        left, width = .1, .9
+        bottom, height = .1, .9
+        right = left + width
+        top = bottom + height
+
+        cols = 3
+        tags = self.metatags
+        nrmeta = len(tags)
+        if nrmeta % cols == 1:
+            nrmeta += 1
+            tags.append(None)
+        layout = n.array(tags).reshape(nrmeta/cols, cols)
+
+        for r in xrange(nrmeta/cols):
+            for c in xrange(cols):
+                m = layout[r][c]
+                if not (m and meta.has_key(m)):
+                    continue
+                val = meta[m]
+                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
+                         (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
+
+    def addcount(self, count, sub, fig):
+        self.log.debug("addcount")
+        from matplotlib.colorbar import Colorbar, make_axes
+
+        cax = sub.imshow(count, cmap=self.cmap, interpolation='nearest')
+        axlim = sub.axis()
+        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
+
+        sub.set_title('Pair samples (#)')
+        cb = fig.colorbar(cax)
+        # cb.set_label('units')
+
+    def adddata(self, data, sub, fig):
+        self.log.debug("adddata")
+        vmin = n.min(data[(data > 1/self.scaling).nonzero()])
+        vmax = n.max(data[(data < 1.0*self.scaling).nonzero()])
+
+        self.log.debug("adddata: normalize vmin %s vmax %s" % (vmin, vmax))
+
+        cax = sub.imshow(data, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
+        axlim = sub.axis()
+        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
+
+        #sub.set_title('Latency (%1.0es)'%(1/self.scaling))
+        sub.set_title(r'Latency ($\mu s$)')
+        cb = fig.colorbar(cax)
+        # cb.set_label("%1.0es"%(1/self.scaling))
+
+    def addhist(self, data, sub, fig1):
+        self.log.debug("addhist")
         """
-        Cycle through all core ids
-        - restore origrng and reapply map with new hwloc filter
-        - repeat ad nauseam
-        This assumes that all cpus have same hwloc info
+        Prepare and filter out 0-data
         """
-        # from origmap, get all hwloc values
-        hwlocs = []
-        for vs in self.origmap.values():
-            for v in vs:
-                if v.startswith('hwloc'):
-                    hwlocs.append(v)
-        hwlocs.sort()
-        self.log.debug("PAIRS: makepairs: hwlocs %s" % hwlocs)
+        d = data.ravel()
+        d = d[(d > 1/self.scaling).nonzero()]
+        vmin = n.min(d)
+        d = d[(d < 1.0*self.scaling).nonzero()]
+        vmax = n.max(d)
 
-        res = n.ones((self.nr, 2), int)*-1
+        (nn, bins, patches) = sub.hist(d, bins=50, range=(vmin, vmax))
+        # sub.set_xlim(int(vmin-1),int(vmax+1))
 
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
-            return res
+        # black magic: set colormap to histogram bars
+        avgbins = (bins[1:]+bins[0:-1])/2
+        newc = sub.pcolor(avgbins.reshape(avgbins.shape[0], 1), cmap=self.cmap)
+        sub.figure.canvas.draw()
+        fcs = newc.get_facecolors()
+        newc.set_visible(False)
+        newc.remove()
+        for i in xrange(avgbins.size):
+            patches[i].set_facecolor(fcs[i])
+        sub.figure.canvas.draw()
 
-        hwlocid = 0
+    def addcm(self):
+        self.log.debug("addcm")
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            import matplotlib.cm as cm
 
-        subgroup = 10
-        for i in xrange(self.nr/subgroup):
-            # restore rng
-            self.rng = copy.deepcopy(self.origrng)
+        badalpha = 0.25
+        badcolor = 'grey'
 
-            # remap
-            self.setcpumap(None, rngfilter='incl', mapfilter=hwlocs[hwlocid])
+        cmap = cm.jet
+        cmap.set_bad(color=badcolor, alpha=badalpha)
+        cmap.set_over(color=badcolor, alpha=badalpha)
+        cmap.set_under(color=badcolor, alpha=badalpha)
 
-            self.filterrng()
+        self.cmap = cmap
 
-            a = n.array(self.rng)
-            for j in xrange(subgroup):
-                res[i*subgroup+j] = self.new(a, i*subgroup+j)
+    def plot(self, data=None, count=None, meta=None):
+        self.log.debug("plot")
+        if not data:
+            data = self.data
+        if not count:
+            count = self.count
+        if not meta:
+            meta = self.meta
 
-            hwlocid = (hwlocid+1) % (len(hwlocs))
+        import matplotlib.pyplot as ppl
 
-        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
-        return res
+        # enable LaTeX processing. Internal mathtext should work fine too
+        # mp.rcParams['text.usetex']=True
+        mp.rcParams['mathtext.fontset'] = 'custom'
+
+        self.ppl = ppl
+
+        # set colormap
+        self.addcm()
+
+        # scale for ISO Ax
+        from math import sqrt
+        figscale = sqrt(2)
+        # A4: 210 mm width
+        # 1 millimeter = 0.0393700787 inch
+        mmtoin = 0.0393700787
+        figwa4 = 210*mmtoin
+        figw = figwa4
+        figh = figw*figscale
+        fig1 = self.ppl.figure(figsize=(figw, figh))
+        fig1.show()
+
+        def shrink(rec, s=None):
+            if not s:
+                s = 0.1
+            l, b, w, h = rec
+
+            nl = l+w*s/2
+            nb = b+h*s/2
+            nw = (1-s)*w
+            nh = (1-s)*h
+
+            ans = [nl, nb, nw, nh]
+            return ans
+
+        texth = 0.1
+        subtext = fig1.add_axes(shrink([0, 1-texth, 1, texth]))
+        self.addtext(meta, subtext, fig1)
+
+        datah = 1/figscale
+        subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
+        self.adddata(data, subdata, fig1)
+
+        histw = 0.7
+        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
+        self.addhist(data, subhist, fig1)
+
+        subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
+        self.addcount(count, subcount, fig1)
+
+        fig1.canvas.draw()
+
+        self.ppl.show()
+
+
+if __name__ == '__main__':
+
+    # dict = {longopt:(help_description,type,action,default_value,shortopt),}
+    options = {
+        'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+    }
+
+    go = simple_option(options)
+
+    m = mympi(nolog=False, serial=True)
+    m.fn = go.options.output
+    data = m.read()
+    # print data
+
+    ppa = pingponganalysis(go.log)
+    ppa.collect(data)
+    ppa.plot()

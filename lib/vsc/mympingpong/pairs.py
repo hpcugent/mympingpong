@@ -45,15 +45,12 @@ import numpy as n
 
 class Pair(object):
 
-    def __init__(self, seed=None, rng=None, pairid=None, logger=None):
+    def __init__(self, rng=None, pairid=None, logger=None):
 
         self.log = logger
 
         self.rng = None
         self.origrng = None
-
-        self.seed=None
-        self.nextseed=None
 
         self.cpumap = None
         self.origmap = None
@@ -65,22 +62,10 @@ class Pair(object):
 
         if rng:
             self.setrng(rng)
-        if isinstance(seed, int):
-            self.setseed(seed)
-        if isinstance(pairid, int):
+        if pairid:
             self.setpairid(pairid)
 
         self.offset = 0
-
-    def setseed(self,seed=None):
-        if type(seed) == int:
-            n.random.seed(seed)
-            self.seed=seed
-            self.nextseed=n.random.random_integers(10000000)
-            self.log.debug("Seed is %s. Nextseed is %s"%(self.seed, self.nextseed))
-        else:
-            self.log.debug("Seed: nothing done: %s (%s)"%(seed,type(seed)))
-
 
     def setpairid(self, pairid):
         if isinstance(pairid, int):
@@ -112,7 +97,7 @@ class Pair(object):
             self.log.error("setrng: rng is neither int or list: %s (%s)", rng, type(rng))
 
         if not self.origrng:
-            # the first time
+            # origrng is empty, so this rng is the original rng
             self.origrng = copy.deepcopy(self.rng)
         self.log.debug("PAIRS: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
 
@@ -139,7 +124,7 @@ class Pair(object):
                 self.log.error("setcpumap: no map or origmap found")
 
         if mapfilter:
-            self.cpumap = applymapfilter(mapfilter)
+            self.cpumap = self.applymapfilter(mapfilter)
         else:
             self.cpumap = cpumapin
 
@@ -170,7 +155,7 @@ class Pair(object):
         try:
             reg = re.compile(r""+mapfilter)
         except Exception as err:
-            self.log.error("applymapfilter: problem with mapfilter %s:%s", mapfilter, err)
+            self.log.error("applymapfilter: problem with compiling the regex for mapfilter %s:%s", mapfilter, err)
 
         for k, els in dictin.items():
             if isinstance(els, list):
@@ -188,6 +173,16 @@ class Pair(object):
         return dictout 
      
     def applyrngfilter(self,rngfilter):
+        """
+        filter rng based on information from cpumap
+
+        incl: 
+
+        excl: not implemented
+
+        groupexcl: do nothing
+
+        """
         """
         Collect relevant ids
         - then either include or exclude them
@@ -296,9 +291,6 @@ class Shuffle(Pair):
 class Groupexcl(Pair):
 
     def new(self, rngar, iteration):
-
-        # reseed deterministically because the run of this function is not equal for all values of self.id
-        self.setseed(self.nextseed)
         
         rngarray = rngar.copy()
         while rngarray.size > 0:
