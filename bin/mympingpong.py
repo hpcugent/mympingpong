@@ -381,11 +381,12 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def runpingpong(self, msgsize=1024, it=20, nr=None, barrier=True):
+    def runpingpong(self, seed=None, msgsize=1024, it=20, nr=None, barrier=True):
         """
         makes a list of pairs and calls pingpong on those
 
         Arguments:
+        seed: a seed for the random number generator, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
         nr: the number of pairs that will be made, in other words the sample size
@@ -428,7 +429,11 @@ class MyPingPong(mympi):
 
         if not self.pairmode:
             self.pairmode = 'Shuffle'
- 
+        if isinstance(seed, int):
+            self.setseed(seed)
+        elif self.pairmode in ['Shuffle']:
+            self.log.raiseException("Runpingpong in mode shuffle and no seeding: this will never work.")
+
         cpumap = self.makemap()
         if self.master:
             self.log.info("runpingpong: making map finished")
@@ -450,7 +455,7 @@ class MyPingPong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        exe = "pair=pairs.%s(rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
+        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
@@ -579,6 +584,7 @@ if __name__ == '__main__':
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
         'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+        'seed': ('set the seed', int, 'store', 2, 's')
     }
 
     go = simple_option(options)
@@ -600,4 +606,4 @@ if __name__ == '__main__':
         # no rngfilter needed (hradcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
+    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
