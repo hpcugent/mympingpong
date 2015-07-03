@@ -401,9 +401,9 @@ class MyPingPong(mympi):
         name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
-        pairmode: the way that pairs are grouped together (randomly or 'smart'), given by the -g argument
-        mapfilter: partially defines the way that pairs are grouped together
-        rngfilter: partially defines the way that pairs are grouped together
+        pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf Shuffle)
+        mapfilter: partially defines the way that pairs are generated
+        rngfilter: partially defines the way that pairs are generated
         ppbarrier: wether or not a barrier is used during the run
         mycore: the processor unit that is being used for the task
         myhwloc: the socket id and core id of the aformentioned processor unit
@@ -596,11 +596,11 @@ if __name__ == '__main__':
         sys.exit(3)
     m.setfn(fn)
 
-    if go.options.groupmode == 'Incl':
+    if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
-    elif go.options.groupmode == 'Groupexcl':
+    elif go.options.groupmode == 'groupexcl':
         m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
-    elif go.options.groupmode == 'Hwloc':
+    elif go.options.groupmode == 'hwloc':
         # no rngfilter needed (hradcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 

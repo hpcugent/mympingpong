@@ -237,7 +237,8 @@ class mympi:
         except Exception as err:
             self.log.error("Failed to open file %s: %s" % (fn, err))
 
-        self.log.debug("write data: %s" % (towrite))
+        #self.log.debug("write data: %s" % (towrite))
+        self.log.debug("====SUCCESS====")
 
     def readbasic(self, fn, offset, bytestoread):
         if self.serial:

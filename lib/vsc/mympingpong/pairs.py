@@ -62,7 +62,7 @@ class Pair(object):
 
         if rng:
             self.setrng(rng)
-        if isinstance(pairid, int):
+        if pairid:
             self.setpairid(pairid)
 
         self.offset = 0
@@ -81,6 +81,14 @@ class Pair(object):
         self.log.debug("PAIRS: Number of samples: %s", nr)
 
     def setrng(self, rng, start=0, step=1):
+        """
+        set self.rng
+
+        Arguments:
+        rng: what self.rng will be set to, can be an int or a list
+        start: if rng is a list and start is given, slice rng starting from here
+        step: if rng is a list and step is given, only write every $step element to self.rng
+        """
         if isinstance(rng, int):
             self.rng = range(start, rng, step)
         elif isinstance(rng, list):
@@ -89,12 +97,12 @@ class Pair(object):
             self.log.error("setrng: rng is neither int or list: %s (%s)", rng, type(rng))
 
         if not self.origrng:
-            # the first time
+            # origrng is empty, so this rng is the original rng
             self.origrng = copy.deepcopy(self.rng)
         self.log.debug("PAIRS: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
 
     def filterrng(self):
-        """makes sure the length of rng is even"""
+        """makes sure rng has an even & nonzero amount of elements"""
 
         if len(self.rng) == 0:
             self.rng = [self.pairid, -1]
@@ -104,11 +112,7 @@ class Pair(object):
             self.log.info('filterrng: odd number of rng provided. Adding -2.')
 
     def setcpumap(self, cpumapin, rngfilter=None, mapfilter=None):
-
-        """
-        setcpumap: rng -> list of features (eg nodename)
-        - what to do with ids that have no properties: add them to a default group or not
-        """
+        """set the cpumap and the revmap, apply filters when necessary"""
 
         if cpumapin:
             if not self.origmap:
@@ -120,7 +124,7 @@ class Pair(object):
                 self.log.error("setcpumap: no map or origmap found")
 
         if mapfilter:
-            self.cpumap = applymapfilter(mapfilter)
+            self.cpumap = self.applymapfilter(mapfilter)
         else:
             self.cpumap = cpumapin
 
@@ -137,7 +141,7 @@ class Pair(object):
         self.log.debug("PAIRS: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
-           applyrngfilter(rngfilter) 
+           self.applyrngfilter(rngfilter) 
 
     def applymapfilter(self,dictin,mapfilter):
         """
@@ -151,7 +155,7 @@ class Pair(object):
         try:
             reg = re.compile(r""+mapfilter)
         except Exception as err:
-            self.log.error("applymapfilter: problem with mapfilter %s:%s", mapfilter, err)
+            self.log.error("applymapfilter: problem with compiling the regex for mapfilter %s:%s", mapfilter, err)
 
         for k, els in dictin.items():
             if isinstance(els, list):
@@ -167,28 +171,29 @@ class Pair(object):
 
         self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
         return dictout 
-
-        
+     
     def applyrngfilter(self,rngfilter):
         """
         Collect relevant ids
         - then either include or exclude them
         - if this id has no property: do nothing at all
         """
+
         self.log.debug("PAIRS: applyrngfilter: rngfilter %s", rngfilter)
         try:
             props = self.cpumap[self.pairid]
         except:
             props = []
             self.log.debug("PAIRS: No props found for id %s", self.pairid)
+
         ids = []
         for p in props:
             for x in self.revmap[p]:
                 if (x in self.rng) and (x not in ids):
                     ids.append(x)
-
         ids.sort()
         self.log.debug("PAIRS: applyrngfilter: props %s ids %s", props, ids)
+
         if rngfilter == 'incl':
             # use only these ids to make pairs
             self.setrng(ids)
@@ -213,26 +218,24 @@ class Pair(object):
         else:
             self.log.error('PAIRS: applyrngfilter: unknown rngfilter %s', rngfilter)
 
-
-
     def makepairs(self):
         """
         For a given set of ranks, create pairs
         - shuffle ranks + make pairs 
         - repeat nr times 
         """
-        # new run the filter
         self.filterrng()
 
+        #creates a matrix of minus ones, with height = self.nr and width = 2
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
             self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
             return res
 
-        a = n.array(self.rng)
+        rngarray = n.array(self.rng)
         for i in xrange(self.nr):
-            res[i] = self.new(a, i)
+            res[i] = self.new(rngarray, i)
 
         self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
@@ -247,9 +250,9 @@ class Shift(Pair):
     A this moment, this doesn't do a lot
     """
 
-    def new(self, x, iteration):
+    def new(self, rngarray, iteration):
         # iteration as shift
-        b = n.roll(x, self.offset+iteration).reshape(len(self.rng)/2, 2)
+        b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
         try:
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
@@ -259,13 +262,12 @@ class Shift(Pair):
 
 class Shuffle(Pair):
 
-    def new(self, x, iteration):
+    def new(self, rngarray, iteration):
 
-        #x = array of rng
-        n.random.shuffle(x)
+        n.random.shuffle(rngarray)
 
         #convert to matrix with height len(self.rng)/2 and width 2
-        b = x.reshape(len(self.rng)/2, 2)
+        b = rngarray.reshape(len(self.rng)/2, 2)
 
         try:
             #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
@@ -278,12 +280,12 @@ class Shuffle(Pair):
 
 class Groupexcl(Pair):
 
-    def new(self, x, iteration):
+    def new(self, rngar, iteration):
         
-        y = x.copy()
-        while y.size > 0:
-            n.random.shuffle(y)
-            luckyid = y[0]
+        rngarray = rngar.copy()
+        while rngarray.size > 0:
+            n.random.shuffle(rngarray)
+            luckyid = rngarray[0]
 
             try:
                 props = self.cpumap[luckyid]
@@ -293,10 +295,10 @@ class Groupexcl(Pair):
             ids = []
             for p in props:
                 for x in self.revmap[p]:
-                    if (x in y) and (x not in ids):
+                    if (x in rngarray) and (x not in ids):
                         ids.append(x)
             neww = []
-            for x in y:
+            for x in rngarray:
                 if x == luckyid:
                     continue
                 if not x in ids:
@@ -316,7 +318,7 @@ class Groupexcl(Pair):
                 return n.array([luckyid, otherluckyid])
             else:
                 for iidd in [luckyid, otherluckyid]:
-                    y = n.delete(y, n.where(y == iidd)[0])
+                    rngarray = n.delete(rngarray, n.where(rngarray == iidd)[0])
 
 
 class Hwloc(Shuffle):
