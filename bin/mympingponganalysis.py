@@ -125,7 +125,7 @@ class Pair(object):
         else:
             self.cpumap = cpumapin
 
-        #Reverse map
+        # Reverse map
         self.revmap = {}
         for k, l in self.cpumap.items():
             for p in l:
@@ -138,9 +138,9 @@ class Pair(object):
         self.log.debug("PAIRS: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
-           self.applyrngfilter(rngfilter) 
+            self.applyrngfilter(rngfilter)
 
-    def applymapfilter(self,dictin,mapfilter):
+    def applymapfilter(self, dictin, mapfilter):
         """
         filter out the keyvalue pairs in dictin that contain $mapfilter
         mapfilter is currently never used, so this block can be discarded if the feature is scrapped
@@ -166,10 +166,10 @@ class Pair(object):
                     continue
                 dictout[k].append(el)
 
-        self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
-        return dictout 
-     
-    def applyrngfilter(self,rngfilter):
+        self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)
+        return dictout
+
+    def applyrngfilter(self, rngfilter):
         """
         filter rng based on information from cpumap
         incl: 
@@ -229,7 +229,7 @@ class Pair(object):
         """
         self.filterrng()
 
-        #creates a matrix of minus ones, with height = self.nr and width = 2
+        # creates a matrix of minus ones, with height = self.nr and width = 2
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
@@ -269,12 +269,12 @@ class Shuffle(Pair):
 
         n.random.shuffle(rngarray)
 
-        #convert to matrix with height len(self.rng)/2 and width 2
+        # convert to matrix with height len(self.rng)/2 and width 2
         b = rngarray.reshape(len(self.rng)/2, 2)
 
         try:
-            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
-            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
+            # n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
+            # b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
@@ -284,7 +284,7 @@ class Shuffle(Pair):
 class Groupexcl(Pair):
 
     def new(self, rngar, iteration):
-        
+
         rngarray = rngar.copy()
         while rngarray.size > 0:
             n.random.shuffle(rngarray)
