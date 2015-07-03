@@ -74,6 +74,7 @@ class Pair(object):
 
     def setseed(self,seed=None):
         """set the seed for n.random"""
+
         if isinstance(seed, int):
             n.random.seed(seed)
             self.seed=seed
@@ -191,17 +192,10 @@ class Pair(object):
         """
         filter rng based on information from cpumap
 
-        incl: 
-
-        excl: not implemented
-
+        incl: only the ids in cpumap are kept in rng
+        excl: (not correctly implemented) the ids in cpumap are removed from rng
         groupexcl: do nothing
 
-        """
-        """
-        Collect relevant ids
-        - then either include or exclude them
-        - if this id has no property: do nothing at all
         """
 
         self.log.debug("PAIRS: applyrngfilter: rngfilter %s", rngfilter)
@@ -223,10 +217,7 @@ class Pair(object):
             # use only these ids to make pairs
             self.setrng(ids)
         elif rngfilter == 'excl':
-            """
-            This does not do what it's supposed to
-            - better not use it like this
-            """
+            self.log.error("attempted to use %s rngfilter, which is not correctly implemented", rngfilter)
             new = []
             for x in self.rng:
                 if not x in ids:
@@ -244,11 +235,8 @@ class Pair(object):
             self.log.error('PAIRS: applyrngfilter: unknown rngfilter %s', rngfilter)
 
     def makepairs(self):
-        """
-        For a given set of ranks, create pairs
-        - shuffle ranks + make pairs 
-        - repeat nr times 
-        """
+        """create an nr amount of pairs, using the new() function defined by $pairmode in mympingpong.py"""
+
         self.filterrng()
 
         #creates a matrix of minus ones, with height = self.nr and width = 2
@@ -270,15 +258,15 @@ class Pair(object):
 
 
 class Shift(Pair):
-
-    """
-    A this moment, this doesn't do a lot
-    """
+    """iterate through rng to find the next random number"""
 
     def new(self, rngarray, iteration):
-        # iteration as shift
+        # shift through rngarray and convert to a matrix with height = len(self.rng)/2 and width = 2
         b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
+
         try:
+            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
+            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
@@ -286,6 +274,7 @@ class Shift(Pair):
 
 
 class Shuffle(Pair):
+    """shuffle rng to find the next random number"""
 
     def new(self, rngarray, iteration):
 
@@ -295,8 +284,6 @@ class Shuffle(Pair):
         b = rngarray.reshape(len(self.rng)/2, 2)
 
         try:
-            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
-            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
