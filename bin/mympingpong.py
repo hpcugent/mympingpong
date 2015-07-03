@@ -402,7 +402,7 @@ class MyPingPong(mympi):
         myrank: MPI jobrank of the task
         nr_tests: number of tests, given by the -n argument
         totalranks: total amount of MPI jobs
-        #name: the MPI processor name
+        name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
         pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf shuffle)
@@ -448,11 +448,6 @@ class MyPingPong(mympi):
             'msgsize': msgsize,
             'iter': it,
             'pairmode': self.pairmode,
-            'mapfilter': self.mapfilter,
-            'rngfilter': self.rngfilter,
-            'ppbarrier': barrier,
-            'mycore': cpumap[self.rank][1],
-            'myhwloc': cpumap[self.rank][2],
         }
 
         data = n.zeros(nr, float)
@@ -514,11 +509,9 @@ class MyPingPong(mympi):
         """
 
         details = {
-            'ppdummyfirst': dummyfirst,
             'ppmode': pmode,
             'ppgroup': None,
             'ppiterations': None,
-            'ppbuiltindummyfirst': None
         }
 
         if not dat:
@@ -561,7 +554,6 @@ class MyPingPong(mympi):
         details.update({
             'ppgroup': pp.group,
             'ppiterations': pp.it,
-            'ppbuiltindummyfirst': pp.builtindummyfirst
         })
 
         return timing, details
