@@ -73,6 +73,7 @@ class Pair(object):
         self.offset = 0
 
     def setseed(self,seed=None):
+        """set the seed for n.random"""
         if isinstance(seed, int):
             n.random.seed(seed)
             self.seed=seed

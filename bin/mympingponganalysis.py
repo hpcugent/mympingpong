@@ -27,32 +27,30 @@
 """
 @author: Stijn De Weirdt (Ghent University)
 
-Generate the plots
+Generate plots from output from mympingpong.py
 """
 
 import sys
 import os
 import re
+import warnings
+from math import sqrt
+
+import matplotlib as mp
+import numpy as n
+import matplotlib.patches as patches
+import matplotlib.pyplot as ppl
+import matplotlib.cm as cm
+from matplotlib.colorbar import Colorbar, make_axes
+
 from vsc.mympingpong.mympi import mympi
 from vsc.utils.generaloption import simple_option
 
 
-class pingponganalysis:
+class PingPongAnalysis(object):
 
     def __init__(self, logger):
         self.log = logger
-
-        try:
-            global mp
-            import matplotlib as mp
-        except Exception, err:
-            self.log.error("Failed to load matplotlib: %s" % err)
-
-        try:
-            global n
-            import numpy as n
-        except Exception, err:
-            self.log.error("Failed to load numpy: %s" % err)
 
         self.data = None
         self.count = None
@@ -130,7 +128,6 @@ class pingponganalysis:
 
     def addtext(self, meta, sub, fig):
         self.log.debug("addtext")
-        import matplotlib.patches as patches
 
         sub.set_axis_off()
 
@@ -159,7 +156,6 @@ class pingponganalysis:
 
     def addcount(self, count, sub, fig):
         self.log.debug("addcount")
-        from matplotlib.colorbar import Colorbar, make_axes
 
         cax = sub.imshow(count, cmap=self.cmap, interpolation='nearest')
         axlim = sub.axis()
@@ -212,10 +208,8 @@ class pingponganalysis:
 
     def addcm(self):
         self.log.debug("addcm")
-        import warnings
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            import matplotlib.cm as cm
 
         badalpha = 0.25
         badcolor = 'grey'
@@ -236,8 +230,6 @@ class pingponganalysis:
         if not meta:
             meta = self.meta
 
-        import matplotlib.pyplot as ppl
-
         # enable LaTeX processing. Internal mathtext should work fine too
         # mp.rcParams['text.usetex']=True
         mp.rcParams['mathtext.fontset'] = 'custom'
@@ -248,7 +240,6 @@ class pingponganalysis:
         self.addcm()
 
         # scale for ISO Ax
-        from math import sqrt
         figscale = sqrt(2)
         # A4: 210 mm width
         # 1 millimeter = 0.0393700787 inch
@@ -306,6 +297,6 @@ if __name__ == '__main__':
     data = m.read()
     # print data
 
-    ppa = pingponganalysis(go.log)
+    ppa = PingPongAnalysis(go.log)
     ppa.collect(data)
     ppa.plot()
