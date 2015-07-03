@@ -41,14 +41,13 @@ import re
 import copy
 
 import numpy as n
-import logging
 
 
 class Pair(object):
 
-    def __init__(self, rng=None, seed=None, pairid=None):
+    def __init__(self, rng=None, seed=None, pairid=None, logger=None):
 
-        self.log = logging.getLogger()   
+        self.log = logger
 
         self.rng = None
         self.origrng = None
@@ -71,7 +70,7 @@ class Pair(object):
     def setpairid(self, pairid):
         if isinstance(pairid, int):
             self.pairid = pairid
-            self.log.debug("Id is %s" % pairid)
+            self.log.debug("PAIRS: Id is %s" % pairid)
         else:
             self.log.error("No valid id given: %s (%s)", pairid, type(pairid))
 
@@ -79,7 +78,7 @@ class Pair(object):
         if not nr:
             nr = int(rng/2)+1
         self.nr = nr
-        self.log.debug("Number of samples: %s", nr)
+        self.log.debug("PAIRS: Number of samples: %s", nr)
 
     def setrng(self, rng, start=0, step=1):
         if isinstance(rng, int):
@@ -92,7 +91,7 @@ class Pair(object):
         if not self.origrng:
             # the first time
             self.origrng = copy.deepcopy(self.rng)
-        self.log.debug("setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
+        self.log.debug("PAIRS: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
 
     def filterrng(self):
         """makes sure the length of rng is even"""
@@ -120,27 +119,10 @@ class Pair(object):
             else:
                 self.log.error("setcpumap: no map or origmap found")
 
-
-        self.cpumap = {}
         if mapfilter:
-            self.log.debug("setcpumap: mapfilter %s" % mapfilter)
-            try:
-                reg = re.compile(r""+mapfilter)
-            except Exception as err:
-                self.log.error("setcpumap: problem with mapfilter %s:%s", mapfilter, err)
-        for k, els in cpumapin.items():
-            if isinstance(els, list):
-                newl = els
-            else:
-                newl = [els]
-
-            self.cpumap[k] = []
-            for el in newl:
-                if mapfilter and not reg.search(el):
-                    continue
-                self.cpumap[k].append(el)
-
-        self.log.debug("setcpumap: map is %s (orig: %s)", self.cpumap, cpumapin)
+            self.cpumap = applymapfilter(mapfilter)
+        else:
+            self.cpumap = cpumapin
 
         #Reverse map
         self.revmap = {}
@@ -152,22 +134,53 @@ class Pair(object):
                     self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
                 else:
                     self.revmap[p].append(k)
-        self.log.debug("setcpumap: revmap is %s", self.revmap)
+        self.log.debug("PAIRS: setcpumap: revmap is %s", self.revmap)
 
-        if not rngfilter:
-            return
+        if rngfilter:
+           applyrngfilter(rngfilter) 
 
+    def applymapfilter(self,dictin,mapfilter):
+        """
+        filter out the keyvalue pairs in dictin that contain $mapfilter
+        mapfilter is currently never used, so this block can be discarded if the feature is scrapped
+        """
+
+        dictout = {}
+
+        self.log.debug("PAIRS: applymapfilter: mapfilter %s" % mapfilter)
+        try:
+            reg = re.compile(r""+mapfilter)
+        except Exception as err:
+            self.log.error("applymapfilter: problem with mapfilter %s:%s", mapfilter, err)
+
+        for k, els in dictin.items():
+            if isinstance(els, list):
+                newl = els
+            else:
+                newl = [els]
+
+            dictout[k] = []
+            for el in newl:
+                if mapfilter and not reg.search(el):
+                    continue
+                dictout[k].append(el)
+
+        self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
+        return dictout 
+
+        
+    def applyrngfilter(self,rngfilter):
         """
         Collect relevant ids
         - then either include or exclude them
         - if this id has no property: do nothing at all
         """
-        self.log.debug("setcpumap: rngfilter %s", rngfilter)
+        self.log.debug("PAIRS: applyrngfilter: rngfilter %s", rngfilter)
         try:
             props = self.cpumap[self.pairid]
         except:
             props = []
-            self.log.debug("No props found for id %s", self.pairid)
+            self.log.debug("PAIRS: No props found for id %s", self.pairid)
         ids = []
         for p in props:
             for x in self.revmap[p]:
@@ -175,7 +188,7 @@ class Pair(object):
                     ids.append(x)
 
         ids.sort()
-        self.log.debug("setcpumap: props %s ids %s", props, ids)
+        self.log.debug("PAIRS: applyrngfilter: props %s ids %s", props, ids)
         if rngfilter == 'incl':
             # use only these ids to make pairs
             self.setrng(ids)
@@ -195,10 +208,12 @@ class Pair(object):
             self.setrng(new)
         elif rngfilter == 'groupexcl':
             # do nothing
-            self.log.debug('setcpumap: rngfilter %s: do nothing', rngfilter)
+            self.log.debug('PAIRS: applyrngfilter: rngfilter %s: do nothing', rngfilter)
             pass
         else:
-            self.log.error('setcpumap: unknown rngfilter %s', rngfilter)
+            self.log.error('PAIRS: applyrngfilter: unknown rngfilter %s', rngfilter)
+
+
 
     def makepairs(self):
         """
@@ -212,14 +227,14 @@ class Pair(object):
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("makepairs: %s not in list of ranks", self.pairid)
+            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
             return res
 
         a = n.array(self.rng)
         for i in xrange(self.nr):
             res[i] = self.new(a, i)
 
-        self.log.debug("makepairs %s returns\n%s", self.pairid, res.transpose())
+        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
 
     def new(self):
@@ -253,7 +268,7 @@ class Shuffle(Pair):
         b = x.reshape(len(self.rng)/2, 2)
 
         try:
-            #n.where(b == self.pairid)[0] returns a list of indices of every element in b that equals pairid
+            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
             #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
@@ -274,7 +289,7 @@ class Groupexcl(Pair):
                 props = self.cpumap[luckyid]
             except:
                 props = []
-                self.log.debug("new: No props found for id %s", luckyid)
+                self.log.debug("PAIRS: new: No props found for id %s", luckyid)
             ids = []
             for p in props:
                 for x in self.revmap[p]:
@@ -295,7 +310,8 @@ class Groupexcl(Pair):
                 n.random.shuffle(z)
                 otherluckyid = z[0]
 
-            self.log.debug("new: id %s: Found other luckyid %s for luckyid %s", self.pairid, otherluckyid, luckyid)
+            self.log.debug(
+                "PAIRS: new: id %s: Found other luckyid %s for luckyid %s", self.pairid, otherluckyid, luckyid)
             if self.pairid in [luckyid, otherluckyid]:
                 return n.array([luckyid, otherluckyid])
             else:
@@ -320,12 +336,12 @@ class Hwloc(Shuffle):
                 if v.startswith('hwloc'):
                     hwlocs.append(v)
         hwlocs.sort()
-        self.log.debug("makepairs: hwlocs %s" % hwlocs)
+        self.log.debug("PAIRS: makepairs: hwlocs %s" % hwlocs)
 
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("makepairs: %s not in list of ranks", self.pairid)
+            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
             return res
 
         hwlocid = 0
@@ -346,5 +362,5 @@ class Hwloc(Shuffle):
 
             hwlocid = (hwlocid+1) % (len(hwlocs))
 
-        self.log.debug("makepairs %s returns\n%s", self.pairid, res.transpose())
+        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res

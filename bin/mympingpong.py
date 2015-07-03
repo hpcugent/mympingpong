@@ -453,7 +453,7 @@ class MyPingPong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank)" % self.pairmode
+        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
         try:
             # TODO: discover this via getchildren approach
             exec(exe)
