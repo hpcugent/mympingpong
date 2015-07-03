@@ -31,12 +31,13 @@ Generate the plots
 """
 
 import sys,os,re
-from vsc.mympingpong.log import initLog,setdebugloglevel
 from vsc.mympingpong.mympi import mympi
+from vsc.utils.generaloption import simple_option
+
 
 class pingponganalysis:
-    def __init__(self):
-        self.log=initLog(name=self.__class__.__name__)
+    def __init__(self, logger):
+        self.log=logger
 
         try:
             global mp
@@ -59,13 +60,13 @@ class pingponganalysis:
         self.scaling=1e6
 
         self.metatags=['totalranks','msgsize','nr_tests','iter',
-                       'uniquenodes','pairmode','ppmode','ppgroup','ppnumber']
+                       'uniquenodes','pairmode','ppmode','ppgroup','ppiterations']
         self.meta=None
 
         self.cmap=None
 
     def collect(self,ppdata):
-        """
+        """ 
         Data in pingpong format
         - list of dictionaries
         - each disctionay with own rank/hostname
@@ -295,6 +296,26 @@ class pingponganalysis:
 
 
 if __name__ == '__main__':
+
+
+
+    # dict = {longopt:(help_description,type,action,default_value,shortopt),}
+    options = {
+        'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+    }
+
+    go = simple_option(options)
+
+    m=mympi(nolog=False,serial=True)
+    m.fn=go.options.output
+    data=m.read()
+    #print data
+    
+    ppa=pingponganalysis(go.log)
+    ppa.collect(data)
+    ppa.plot()
+    
+"""
     import getopt
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dpmf:")
@@ -330,3 +351,4 @@ if __name__ == '__main__':
     ppa.collect(data)
     ppa.plot()
     
+"""
