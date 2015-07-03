@@ -45,9 +45,12 @@ import numpy as n
 
 class Pair(object):
 
-    def __init__(self, rng=None, pairid=None, logger=None):
+    def __init__(self, seed=None, rng=None, pairid=None, logger=None):
 
         self.log = logger
+
+        self.seed=None
+        self.nextseed=None
 
         self.rng = None
         self.origrng = None
@@ -62,10 +65,21 @@ class Pair(object):
 
         if rng:
             self.setrng(rng)
-        if pairid:
+        if isinstance(seed, int):
+            self.setseed(seed)
+        if isinstance(pairid, int):
             self.setpairid(pairid)
 
         self.offset = 0
+
+    def setseed(self,seed=None):
+        if isinstance(seed, int):
+            n.random.seed(seed)
+            self.seed=seed
+            self.nextseed=n.random.random_integers(10000000)
+            self.log.debug("Seed is %s. Nextseed is %s"%(self.seed, self.nextseed))
+        else:
+            self.log.debug("Seed: nothing done: %s (%s)"%(seed,type(seed)))
 
     def setpairid(self, pairid):
         if isinstance(pairid, int):
@@ -291,7 +305,10 @@ class Shuffle(Pair):
 class Groupexcl(Pair):
 
     def new(self, rngar, iteration):
-        
+
+        # reseed deterministically because the run of this function is not equal for all values of self.id
+        self.setseed(self.nextseed)
+
         rngarray = rngar.copy()
         while rngarray.size > 0:
             n.random.shuffle(rngarray)
