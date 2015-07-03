@@ -298,42 +298,6 @@ class mympi:
 
         return alldata
 
-    # TODO replace with from vsc.utils.run import simple_run
-    def runrun(self, cmd, returnout=False):
-        import time
-        if sys.version_info[1] < 6:
-            import popen2
-        else:
-            import warnings
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=DeprecationWarning)
-                import popen2
-
-        try:
-            p = popen2.Popen4(cmd)
-            p.tochild.close()
-            ec = p.poll()
-            out = ''
-            while ec < 0:
-                ec = p.poll()
-                # need to read from time to time. otherwise the stdout/stderr
-                # buffer gets filled and it all stops working
-                out += p.fromchild.read()
-                time.sleep(1)
-
-            ec = os.WEXITSTATUS(ec)
-            out += p.fromchild.read()
-        except Exception as err:
-            self.log.error(
-                "Something went wrong with forking cmd %s: %s" % (cmd, err))
-
-        if returnout:
-            return ec, out
-        else:
-            if ec > 0:
-                self.log.error(
-                    "Cmd '%s' failed: exitcode %s, output %s" % (cmd, ec, out))
-
 
 class master(mympi):
 
