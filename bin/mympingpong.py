@@ -35,6 +35,8 @@ TODO:
  - remove exec usage
 
 """
+#this needs to be imported before other loggers or fancylogger won't work
+from vsc.utils.generaloption import simple_option
 
 import copy
 import os
@@ -48,9 +50,7 @@ from mpi4py.MPI import Wtime as wtime
 from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
 from vsc.utils.run import run_simple
-from vsc.utils.generaloption import simple_option
 
-#this needs to be imported after generaloptionsm or its messes with the go logger
 from logging import getLogger
 
 
