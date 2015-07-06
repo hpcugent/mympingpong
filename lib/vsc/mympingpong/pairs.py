@@ -263,7 +263,7 @@ class Shift(Pair):
     """iterate through rng to find the next random number"""
 
     @classmethod
-    def is_registrar_for(cls, pairmode):
+    def ispairmode(cls, pairmode):
         return pairmode == 'shift'
 
     def new(self, rngarray, iteration):
@@ -283,7 +283,7 @@ class Shuffle(Pair):
     """shuffle rng to find the next random number"""
 
     @classmethod
-    def is_registrar_for(cls, pairmode):
+    def ispairmode(cls, pairmode):
         return pairmode == 'shuffle'
 
     def new(self, rngarray, iteration):
@@ -303,7 +303,7 @@ class Shuffle(Pair):
 class Groupexcl(Pair):
 
     @classmethod
-    def is_registrar_for(cls, pairmode):
+    def ispairmode(cls, pairmode):
         return pairmode == 'groupexcl'
 
     def new(self, rngar, iteration):
@@ -401,6 +401,6 @@ def Pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
 
     logger.debug("in pairfactory with pairmode %s", pairmode)
     for cls in Pair.__subclasses__():
-        if cls.is_registrar_for(pairmode):
+        if cls.ispairmode(pairmode):
             return cls(pairmode, seed, rng, pairid, logger)
     raise ValueError
