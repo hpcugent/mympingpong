@@ -78,7 +78,7 @@ class Pair(object):
         """A factory for creating Pair objects"""
 
         logger.debug("in pairfactory with pairmode %s", pairmode)
-        for cls in get_subclasses(Pair) + [Pair]:
+        for cls in get_subclasses(Pair, include_base_class=True):
             if pairmode == cls.__name__.lower():
                 return cls(seed, rng, pairid, logger)
         raise KeyError

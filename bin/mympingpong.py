@@ -98,7 +98,7 @@ class PingPongSR(object):
         """a factory for creating PingPong objects"""
 
         log.debug("in pingpongfactory with pptype: %s", pptype)
-        for cls in get_subclasses(PingPongSR) + [PingPongSR]:
+        for cls in get_subclasses(PingPongSR, include_base_class=True):
             if "PingPong%s" % pptype == cls.__name__:
                 return cls(comm, p, log)
         raise KeyError
