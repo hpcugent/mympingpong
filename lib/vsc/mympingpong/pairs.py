@@ -45,9 +45,7 @@ import numpy as n
 
 class Pair(object):
 
-    def __init__(self, pairmode, seed=None, rng=None, pairid=None, logger=None):
-
-        self.pairmode = pairmode
+    def __init__(self, seed=None, rng=None, pairid=None, logger=None):
 
         self.log = logger
 
@@ -402,5 +400,5 @@ def Pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
     logger.debug("in pairfactory with pairmode %s", pairmode)
     for cls in Pair.__subclasses__():
         if cls.ispairmode(pairmode):
-            return cls(pairmode, seed, rng, pairid, logger)
+            return cls(seed, rng, pairid, logger)
     raise ValueError
