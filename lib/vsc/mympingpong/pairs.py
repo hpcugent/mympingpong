@@ -80,7 +80,7 @@ class Pair(object):
         for cls in get_subclasses(Pair) + [Pair]:
             if pairmode == cls.__name__.lower():
                 return cls(seed, rng, pairid, logger)
-        raise ValueError
+        raise KeyError
     pairfactory = staticmethod(pairfactory)
 
     def setseed(self,seed=None):
