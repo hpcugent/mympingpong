@@ -44,8 +44,8 @@ import re
 import zlib
 import cPickle
 import array
-
-from vsc.mympingpong.log import initLog, setdebugloglevel
+import logging
+import numpy as n
 
 
 def getshared():
@@ -62,13 +62,7 @@ class mympi:
 
     def __init__(self, nolog=True, serial=False):
         if not nolog:
-            self.log = initLog(name=self.__class__.__name__)
-
-        try:
-            global n
-            import numpy as n
-        except Exception as err:
-            self.log.error("Can't load module numpy: %s" % err)
+            self.log = logging.getLogger()
 
         self.serial = False
         self.pickledelim = "\nPICKLEDELIMITER\n"
@@ -243,7 +237,7 @@ class mympi:
         except Exception as err:
             self.log.error("Failed to open file %s: %s" % (fn, err))
 
-        self.log.debug("write data: %s" % (towrite))
+        self.log.debug("succesfully written data to %s", fn)
 
     def readbasic(self, fn, offset, bytestoread):
         if self.serial:
@@ -303,42 +297,6 @@ class mympi:
 
         return alldata
 
-    # TODO replace with from vsc.utils.run import simple_run
-    def runrun(self, cmd, returnout=False):
-        import time
-        if sys.version_info[1] < 6:
-            import popen2
-        else:
-            import warnings
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=DeprecationWarning)
-                import popen2
-
-        try:
-            p = popen2.Popen4(cmd)
-            p.tochild.close()
-            ec = p.poll()
-            out = ''
-            while ec < 0:
-                ec = p.poll()
-                # need to read from time to time. otherwise the stdout/stderr
-                # buffer gets filled and it all stops working
-                out += p.fromchild.read()
-                time.sleep(1)
-
-            ec = os.WEXITSTATUS(ec)
-            out += p.fromchild.read()
-        except Exception as err:
-            self.log.error(
-                "Something went wrong with forking cmd %s: %s" % (cmd, err))
-
-        if returnout:
-            return ec, out
-        else:
-            if ec > 0:
-                self.log.error(
-                    "Cmd '%s' failed: exitcode %s, output %s" % (cmd, ec, out))
-
 
 class master(mympi):
 
@@ -353,40 +311,3 @@ class slave(mympi):
 
     def __init__(self):
         mympi.__init__(self, nolog=False)
-
-if __name__ == '__main__':
-    import getopt
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "ds")
-    except getopt.GetoptError, err:
-        print str(err)  # will print something like "option -a not recognized"
-        sys.exit(2)
-
-    serial = False
-    debug = False
-    for o, a in opts:
-        if o in ['-s']:
-            serial = True
-        if o in ['-d']:
-            debug = True
-
-    setdebugloglevel(debug)
-
-    m = mympi(serial=serial)
-
-    try:
-        fn = os.path.join(getshared(), 'test2')
-    except KeyError as err:
-        # TODO: replace prints with fancylogger
-        print str(err) + 'is not set'
-        sys.exit(3)
-
-    m.setfn(fn)
-
-    if serial:
-        m.read()
-    else:
-        data = '%s' % m.rank
-        m.write(data*250)
-        m.comm.Barrier()
-        m.read()

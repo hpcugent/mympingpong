@@ -21,12 +21,27 @@ COMMAND SYNTAX
 -n [NUMBER] 	is the amount of pairs that will be made with the available cores
 
 
+SETTING UP VIRTUALENV
+=====================
+virtualenv -p /usr/bin/python2.7 .$environment
+source .$environment/bin/activate
+
+pip install cython
+pip install matplotlib
+pip install lxml
+pip install vsc-base
+pip install https://github.com/hpcugent/vsc-mympirun/archive/vsc-mympirun-3.4.2.tar.gz 
+
+
+
+
 EXPORTS LAPTOP
 ================
 export PATH=$PATH:~/.local/bin
 export PYTHONPATH=~/Documents/Github/hpc/mpi4py/lib/python
 export VSC_SCRATCH=/tmp
 export LOADEDMODULES=abc
+
 
 MODULES
 =======
@@ -52,10 +67,11 @@ JOBSCRIPT
 #!/bin/bash
 module load scripts
 module load Python/2.7.9-intel-2015a
+module load lxml/3.4.2-intel-2015a-Python-2.7.9
 cd $VSC_SCRATCH/mympingpong
 
 export PYTHONPATH=/gpfs/scratch/apps/develop/software/vsc-mympirun/3.4.2/lib/:~/.local/lib/python2.7/site-packages/:/gpfs/scratch/users/vsc415/vsc41588/mpi4py/lib/python:~/.local/lib/python2.7/site-packages/mympingpong-0.5.0-py2.7.egg/:$PYTHONPATH
-mympirun --variablesprefix=VSC -h 1 taskset -c 0 ./bin/mympingpong.py -f output_$PBS_JOBID -i 20000 -n 20000  > sdtout_$PBS_JOBID
+mympirun --output sdtout_$PBS_JOBID --variablesprefix=VSC -h 1 taskset -c 0 ./bin/mympingpong.py -f output_$PBS_JOBID -i 20000 -n 20000
 
 FILE TRANSFER
 =============
