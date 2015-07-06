@@ -103,7 +103,7 @@ class PingPongAnalysis(object):
                     self.log.debug("No valid data for pair %s"%ind)
                     fail[ind[n.where(ind > -1)[0][0]]] += 1
                     continue
-                data[ind[0]][ind[1]] += el['data'][i][0]
+                data[ind[0]][ind[1]] += el['data'][i]
                 count[ind[0]][ind[1]] += 1
 
         # transform into array
@@ -287,13 +287,14 @@ if __name__ == '__main__':
 
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
-        'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+        'input': ('set the inputfile', str, 'store', 'test2', 'f'),
     }
 
     go = simple_option(options)
 
     m = mympi(nolog=False, serial=True)
-    m.fn = go.options.output
+
+    m.setfn(go.options.input)
     data = m.read()
     # print data
 

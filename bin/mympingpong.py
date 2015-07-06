@@ -132,7 +132,7 @@ class PingPongSR(object):
 
         avg = n.average((self.end-self.start)/(2.0*group))
 
-        return avg, self.start, self.end
+        return avg
 
 
 class PingPongRS(PingPongSR):
@@ -191,7 +191,7 @@ class PingPongSRfast(PingPongSR):
 
         avg = n.average((self.end-self.start) / (2.0*group))
 
-        return avg, self.start, self.end
+        return avg
 
 
 class PingPongRSfast(PingPongSRfast):
@@ -393,7 +393,7 @@ class MyPingPong(mympi):
         seed: a seed for the random number generator used in pairs.py, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
-        nr: the number of pairs that will be made, in other words the sample size
+        nr: the number of pairs that will be made for eqch Processing Unit, in other words the sample size
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
@@ -457,7 +457,7 @@ class MyPingPong(mympi):
             'myhwloc': cpumap[self.rank][2],
         }
 
-        data = n.zeros((nr, 3), float)
+        data = []
 
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
@@ -476,7 +476,7 @@ class MyPingPong(mympi):
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
-        for runid, pair in enumerate(mypairs):
+        for pair in mypairs:
             if barrier:
                 self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
@@ -486,7 +486,7 @@ class MyPingPong(mympi):
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
-            data[runid] = timing
+            data.append(timing)
 
         res['pairs'] = mypairs
         res['data'] = data
@@ -554,13 +554,11 @@ class MyPingPong(mympi):
 
         if self.master:
             self.log.info("runpingpong: starting dopingpong")
-        avg, start, end = pp.dopingpong(it)
+        timing = float(pp.dopingpong(it))
         if self.master:
             self.log.info("runpingpong: end dopingpong")
 
-        timing = [float(avg), float(start[0]), float(end[0])]
-
-        self.log.debug("pingpong p1 %s p2 %s avg/start/end %s", p1, p2, timing)
+        self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
 
         details.update({
             'ppgroup': pp.group,

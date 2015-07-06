@@ -217,7 +217,7 @@ class mympi:
         self.log.debug("write size %s masteroffset %s offset %s map %s" % (
             size, masteroffset, offset, map))
 
-        amode = MPI.MODE_RDWR | MPI.MODE_CREATE | MPI.MODE_APPEND
+        amode = MPI.MODE_RDWR | MPI.MODE_CREATE
 
         try:
             fh = MPI.File.Open(self.comm, fn, amode)
