@@ -42,6 +42,7 @@ import copy
 
 import numpy as n
 
+from vsc.utils.missing import get_subclasses
 
 class Pair(object):
 
@@ -71,6 +72,16 @@ class Pair(object):
             self.setpairid(pairid)
 
         self.offset = 0
+
+    def pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
+        """A factory for creating Pair objects"""
+
+        logger.debug("in pairfactory with pairmode %s", pairmode)
+        for cls in get_subclasses(Pair) + [Pair]:
+            if pairmode == cls.__name__.lower():
+                return cls(seed, rng, pairid, logger)
+        raise ValueError
+    pairfactory = staticmethod(pairfactory)
 
     def setseed(self,seed=None):
         """set the seed for n.random"""
@@ -260,10 +271,6 @@ class Pair(object):
 class Shift(Pair):
     """iterate through rng to find the next random number"""
 
-    @classmethod
-    def ispairmode(cls, pairmode):
-        return pairmode == 'shift'
-
     def new(self, rngarray, iteration):
         # shift through rngarray and convert to a matrix with height = len(self.rng)/2 and width = 2
         b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
@@ -280,10 +287,6 @@ class Shift(Pair):
 class Shuffle(Pair):
     """shuffle rng to find the next random number"""
 
-    @classmethod
-    def ispairmode(cls, pairmode):
-        return pairmode == 'shuffle'
-
     def new(self, rngarray, iteration):
 
         n.random.shuffle(rngarray)
@@ -299,10 +302,6 @@ class Shuffle(Pair):
 
 
 class Groupexcl(Pair):
-
-    @classmethod
-    def ispairmode(cls, pairmode):
-        return pairmode == 'groupexcl'
 
     def new(self, rngar, iteration):
 
@@ -393,12 +392,3 @@ class Hwloc(Shuffle):
 
         self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
-
-def Pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
-    """A factory for creating Pair objects"""\
-
-    logger.debug("in pairfactory with pairmode %s", pairmode)
-    for cls in Pair.__subclasses__():
-        if cls.ispairmode(pairmode):
-            return cls(seed, rng, pairid, logger)
-    raise ValueError

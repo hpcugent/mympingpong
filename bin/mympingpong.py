@@ -50,6 +50,7 @@ from mpi4py.MPI import Wtime as wtime
 from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
 from vsc.utils.run import run_simple
+from vsc.utils.missing import get_subclasses
 
 from logging import getLogger
 
@@ -92,6 +93,16 @@ class PingPongSR(object):
 
         self.setcomm()
 
+    def pingpongfactory(pptype, comm, p, log):
+        """a factory for creating PingPong objects"""
+
+        log.debug("in pingpongfactory with pptype: %s", pptype)
+        for cls in get_subclasses(PingPongSR) + [PingPongSR]:
+            if "PingPong%s" % pptype == cls.__name__:
+                return cls(comm, p, log)
+        raise ValueError
+    pingpongfactory = staticmethod(pingpongfactory)
+
     def setsr(self):
         self.send = self.comm.Send
         self.recv = self.comm.Recv
@@ -127,20 +138,12 @@ class PingPongSR(object):
 class PingPongRS(PingPongSR):
     """standard pingpong"""
 
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'RS'
-
     def setcomm(self):
         self.run1 = self.recv
         self.run2 = self.send
 
 
 class PingPongSRfast(PingPongSR):
-    
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'SRfast'
 
     def setsr(self):
         """set the send-recieve optimisation """
@@ -193,10 +196,6 @@ class PingPongSRfast(PingPongSR):
 
 class PingPongRSfast(PingPongSRfast):
     
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'RSfast'
-
     def setcomm(self):
         self.run1 = self.recv
         # flip tags
@@ -207,10 +206,6 @@ class PingPongRSfast(PingPongSRfast):
 
 class PingPongSRU10(PingPongSRfast):
     """send-receive optimized for pingponging 10 times"""
-    
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'SRU10'
 
     def setsr(self):
         self.groupforce = 10
@@ -221,10 +216,6 @@ class PingPongSRU10(PingPongSRfast):
 
 class PingPongRSU10(PingPongRSfast):
     """receive-send optimized for pingponging 10 times"""
-    
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'RSU10'
 
     def setsr(self):
         self.groupforce = 10
@@ -236,10 +227,6 @@ class PingPongRSU10(PingPongRSfast):
 class PingPongSRfast2(PingPongSRfast):
     """send-receive optimized for pingponging 25 times in a for loop"""
     
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'SRfast2'
-
     def setsr(self):
         self.groupforce = 25
         self.builtindummyfirst = True
@@ -250,10 +237,6 @@ class PingPongSRfast2(PingPongSRfast):
 class PingPongRSfast2(PingPongRSfast):
     """receive-send optimized for pingponging 25 times in a for loop"""
     
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'RSfast2'
-
     def setsr(self):
         self.groupforce = 25
         self.builtindummyfirst = True
@@ -263,29 +246,11 @@ class PingPongRSfast2(PingPongRSfast):
 
 class PingPongtest(PingPongSR):
 
-    @classmethod
-    def ispingpongtype(cls, pptype):
-        return pptype == 'test'
-
     def dopingpong(it):
         for x in xrange(it):
             self.start[x] = wtime()
             self.end[x] = wtime()
         return self.start, self.end
-
-def all_subclasses(cls):
-    """
-    recursively find all subclasses from a given class
-    http://stackoverflow.com/questions/3862310
-    """
-    return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
-
-
-def PingPongFactory(pptype, comm, p, log):
-  for cls in all_subclasses(PingPongSR):
-    if cls.ispingpongtype(pptype):
-      return cls(comm, p, log)
-  raise ValueError
 
 
 class MyPingPong(mympi):
@@ -495,7 +460,7 @@ class MyPingPong(mympi):
         data = n.zeros((nr, 3), float)
 
         try:
-            pair = pairs.Pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
+            pair = pairs.Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
         except ValueError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
@@ -572,11 +537,11 @@ class MyPingPong(mympi):
             return -1, details
 
         if test:
-            pp = pp = PingPongFactory('test')
+            pp = PingPongSR.pingpongfactory('test')
         elif self.rank == p1:
-            pp = PingPongFactory('SR' + pmode, self.comm, p2, self.log)
+            pp = PingPongSR.pingpongfactory('SR' + pmode, self.comm, p2, self.log)
         elif self.rank == p2:
-            pp = PingPongFactory('RS' + pmode, self.comm, p1, self.log)
+            pp = PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
         else:
             self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
             return -1, details
