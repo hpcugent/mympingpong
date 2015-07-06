@@ -33,7 +33,6 @@ TODO:
  - factor out the pingpong class in vsc.mympingpong.pingpong
  - refactor mypingpong class in regular main() function
 """
-
 # this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
 
