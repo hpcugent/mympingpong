@@ -86,7 +86,7 @@ class Pair(object):
     def setpairid(self, pairid):
         if isinstance(pairid, int):
             self.pairid = pairid
-            self.log.debug("PAIRS: Id is %s" % pairid)
+            self.log.debug("pairs: Id is %s" % pairid)
         else:
             self.log.error("No valid id given: %s (%s)", pairid, type(pairid))
 
@@ -94,7 +94,7 @@ class Pair(object):
         if not nr:
             nr = int(rng/2)+1
         self.nr = nr
-        self.log.debug("PAIRS: Number of samples: %s", nr)
+        self.log.debug("pairs: Number of samples: %s", nr)
 
     def setrng(self, rng, start=0, step=1):
         """
@@ -115,7 +115,7 @@ class Pair(object):
         if not self.origrng:
             # origrng is empty, so this rng is the original rng
             self.origrng = copy.deepcopy(self.rng)
-        self.log.debug("PAIRS: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
+        self.log.debug("pairs: setrng: size %s rng %s (srcrng %s %s)", len(self.rng), self.rng, rng, type(rng))
 
     def filterrng(self):
         """makes sure rng has an even & nonzero amount of elements"""
@@ -144,7 +144,7 @@ class Pair(object):
         else:
             self.cpumap = cpumapin
 
-        #Reverse map
+        # Reverse map
         self.revmap = {}
         for k, l in self.cpumap.items():
             for p in l:
@@ -154,7 +154,7 @@ class Pair(object):
                     self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
                 else:
                     self.revmap[p].append(k)
-        self.log.debug("PAIRS: setcpumap: revmap is %s", self.revmap)
+        self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
            self.applyrngfilter(rngfilter) 
@@ -167,7 +167,7 @@ class Pair(object):
 
         dictout = {}
 
-        self.log.debug("PAIRS: applymapfilter: mapfilter %s" % mapfilter)
+        self.log.debug("pairs: applymapfilter: mapfilter %s" % mapfilter)
         try:
             reg = re.compile(r""+mapfilter)
         except Exception as err:
@@ -185,7 +185,7 @@ class Pair(object):
                     continue
                 dictout[k].append(el)
 
-        self.log.debug("PAIRS: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
+        self.log.debug("pairs: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
         return dictout 
      
     def applyrngfilter(self,rngfilter):
@@ -198,12 +198,12 @@ class Pair(object):
 
         """
 
-        self.log.debug("PAIRS: applyrngfilter: rngfilter %s", rngfilter)
+        self.log.debug("pairs: applyrngfilter: rngfilter %s", rngfilter)
         try:
             props = self.cpumap[self.pairid]
-        except:
+        except KeyError as err:
             props = []
-            self.log.debug("PAIRS: No props found for id %s", self.pairid)
+            self.log.debug("pairs: No props found for id %s", self.pairid)
 
         ids = []
         for p in props:
@@ -211,7 +211,7 @@ class Pair(object):
                 if (x in self.rng) and (x not in ids):
                     ids.append(x)
         ids.sort()
-        self.log.debug("PAIRS: applyrngfilter: props %s ids %s", props, ids)
+        self.log.debug("pairs: applyrngfilter: props %s ids %s", props, ids)
 
         if rngfilter == 'incl':
             # use only these ids to make pairs
@@ -229,28 +229,28 @@ class Pair(object):
             self.setrng(new)
         elif rngfilter == 'groupexcl':
             # do nothing
-            self.log.debug('PAIRS: applyrngfilter: rngfilter %s: do nothing', rngfilter)
+            self.log.debug('pairs: applyrngfilter: rngfilter %s: do nothing', rngfilter)
             pass
         else:
-            self.log.error('PAIRS: applyrngfilter: unknown rngfilter %s', rngfilter)
+            self.log.error('pairs: applyrngfilter: unknown rngfilter %s', rngfilter)
 
     def makepairs(self):
         """create an nr amount of pairs, using the new() function defined by $pairmode in mympingpong.py"""
 
         self.filterrng()
 
-        #creates a matrix of minus ones, with height = self.nr and width = 2
+        # creates a matrix of minus ones, with height = self.nr and width = 2
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
+            self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
         rngarray = n.array(self.rng)
         for i in xrange(self.nr):
             res[i] = self.new(rngarray, i)
 
-        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
+        self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
 
     def new(self):
@@ -265,8 +265,8 @@ class Shift(Pair):
         b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
 
         try:
-            #n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
-            #b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
+            # n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
+            # b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
         except Exception as err:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
@@ -280,7 +280,7 @@ class Shuffle(Pair):
 
         n.random.shuffle(rngarray)
 
-        #convert to matrix with height len(self.rng)/2 and width 2
+        # convert to matrix with height len(self.rng)/2 and width 2
         b = rngarray.reshape(len(self.rng)/2, 2)
 
         try:
@@ -304,9 +304,9 @@ class Groupexcl(Pair):
 
             try:
                 props = self.cpumap[luckyid]
-            except:
+            except KeyError as err:
                 props = []
-                self.log.debug("PAIRS: new: No props found for id %s", luckyid)
+                self.log.debug("pairs: new: No props found for id %s", luckyid)
             ids = []
             for p in props:
                 for x in self.revmap[p]:
@@ -327,8 +327,8 @@ class Groupexcl(Pair):
                 n.random.shuffle(z)
                 otherluckyid = z[0]
 
-            self.log.debug(
-                "PAIRS: new: id %s: Found other luckyid %s for luckyid %s", self.pairid, otherluckyid, luckyid)
+            self.log.debug("pairs: new: id %s: Found other luckyid %s for luckyid %s",
+                           self.pairid, otherluckyid, luckyid)
             if self.pairid in [luckyid, otherluckyid]:
                 return n.array([luckyid, otherluckyid])
             else:
@@ -353,12 +353,12 @@ class Hwloc(Shuffle):
                 if v.startswith('hwloc'):
                     hwlocs.append(v)
         hwlocs.sort()
-        self.log.debug("PAIRS: makepairs: hwlocs %s" % hwlocs)
+        self.log.debug("pairs: makepairs: hwlocs %s" % hwlocs)
 
         res = n.ones((self.nr, 2), int)*-1
 
         if isinstance(self.pairid, int) and (not self.pairid in self.rng):
-            self.log.debug("PAIRS: makepairs: %s not in list of ranks", self.pairid)
+            self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
         hwlocid = 0
@@ -379,5 +379,5 @@ class Hwloc(Shuffle):
 
             hwlocid = (hwlocid+1) % (len(hwlocs))
 
-        self.log.debug("PAIRS: makepairs %s returns\n%s", self.pairid, res.transpose())
+        self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res

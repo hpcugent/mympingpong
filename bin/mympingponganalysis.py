@@ -100,7 +100,7 @@ class PingPongAnalysis(object):
             for i in xrange(el['nr_tests']):
                 ind = el['pairs'][i]
                 if (-1 in ind) or (-2 in ind):
-                    #self.log.debug("No valid data for pair %s"%ind)
+                    self.log.debug("No valid data for pair %s"%ind)
                     fail[ind[n.where(ind > -1)[0][0]]] += 1
                     continue
                 data[ind[0]][ind[1]] += el['data'][i][0]
@@ -176,7 +176,7 @@ class PingPongAnalysis(object):
         axlim = sub.axis()
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
 
-        #sub.set_title('Latency (%1.0es)'%(1/self.scaling))
+        # sub.set_title('Latency (%1.0es)'%(1/self.scaling))
         sub.set_title(r'Latency ($\mu s$)')
         cb = fig.colorbar(cax)
         # cb.set_label("%1.0es"%(1/self.scaling))

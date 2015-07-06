@@ -584,7 +584,7 @@ if __name__ == '__main__':
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
         'output': ('set the outputfile', str, 'store', 'test2', 'f'),
-        'seed': ('set the seed', int, 'store', 2, 's')        
+        'seed': ('set the seed', int, 'store', 2, 's'),    
     }
 
     go = simple_option(options)
