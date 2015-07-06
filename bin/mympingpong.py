@@ -35,7 +35,7 @@ TODO:
  - remove exec usage
 
 """
-#this needs to be imported before other loggers or fancylogger won't work
+# this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
 
 import copy
@@ -102,7 +102,6 @@ class PingPongSR(object):
 
     def setdat(self, dat):
         self.sndbuf = dat
-        # make a copy of the receivebuffer
         self.rcvbuf = copy.deepcopy(self.sndbuf)
 
     def setit(self, it):
@@ -198,7 +197,6 @@ class PingPongSRU10(PingPongSRfast):
     """send-receive optimized for pingponging 10 times"""
 
     def setsr(self):
-        # use faster pingpong
         self.groupforce = 10
         self.builtindummyfirst = True
         self.send = self.comm.PingpongSRU10
@@ -209,7 +207,6 @@ class PingPongRSU10(PingPongRSfast):
     """receive-send optimized for pingponging 10 times"""
 
     def setsr(self):
-        # use faster pingpong
         self.groupforce = 10
         self.builtindummyfirst = True
         self.send = self.comm.PingpongSRU10
@@ -220,7 +217,6 @@ class PingPongSRfast2(PingPongSRfast):
     """send-receive optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
-        # use faster pingpong
         self.groupforce = 25
         self.builtindummyfirst = True
         self.send = self.comm.PingpongSR25
@@ -231,7 +227,6 @@ class PingPongRSfast2(PingPongRSfast):
     """receive-send optimized for pingponging 25 times in a for loop"""
 
     def setsr(self):
-        # use faster pingpong
         self.groupforce = 25
         self.builtindummyfirst = True
         self.send = self.comm.PingpongSR25
@@ -241,7 +236,6 @@ class PingPongRSfast2(PingPongRSfast):
 class PingPongtest(PingPongSR):
 
     def dopingpong(it):
-        # python float are double
         for x in xrange(it):
             self.start[x] = wtime()
             self.end[x] = wtime()
@@ -274,7 +268,6 @@ class MyPingPong(mympi):
         except OSError as err:
             self.log.error("Can't obtain current process id: %s", err)
 
-        # get taskset
         cmd = "taskset -c -p %s" % mypid
         ec, out = run_simple(cmd)
         regproc = re.compile(r"\s+(\d+)\s*$")
@@ -316,11 +309,11 @@ class MyPingPong(mympi):
         cmd = "%s --output-format xml %s" % (exe, xmlout)
         ec, txt = run_simple(cmd)
 
-        ## parse xmloutput
+        # parse xmloutput
         base = etree.parse(xmlout)
 
         sks_xpath = '//object[@type="Socket"]'
-        #list of socket ids
+        # list of socket ids
         sks = map(int, base.xpath(sks_xpath + '/@os_index'))
         self.log.debug("sockets: %s", sks)
 
@@ -328,19 +321,19 @@ class MyPingPong(mympi):
 
         for x, sk in enumerate(sks):
             cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, x)
-            #list of core ids in socket x
+            # list of core ids in socket x
             crs = map(int, base.xpath('%s/@os_index' % cr_xpath))
             self.log.debug("cores: %s", crs)
 
             for y, cr in enumerate(crs):
                 pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, y)
-                #list of PU ids in core y from socket x
+                # list of PU ids in core y from socket x
                 pus = map(int, base.xpath('%s/@os_index' % pu_xpath))
                 self.log.debug("PU's: %s", pus)
 
                 # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
-                #in case of errors, revert back to this
-                #aPU = sks[x] * len(crs) * len(pus) + pus[z]
+                # in case of errors, revert back to this
+                # aPU = sks[x] * len(crs) * len(pus) + pus[z]
                 for pu in pus:
                     t = "socket %s core %s abscore %s" % (sk, cr, aPU)
                     res[aPU] = t
@@ -577,7 +570,6 @@ class MyPingPong(mympi):
 
 if __name__ == '__main__':
 
-    # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'number': ('set the amount of samples that will be made', int, 'store', None, 'n'),
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
@@ -603,7 +595,7 @@ if __name__ == '__main__':
     elif go.options.groupmode == 'groupexcl':
         m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'hwloc':
-        # no rngfilter needed (hradcoded to incl)
+        # no rngfilter needed (hardcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
