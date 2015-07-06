@@ -368,7 +368,7 @@ class MyPingPong(mympi):
         self.log.debug("makemap result: %s", res)
         return res
 
-    def setpairmode(self, pairmode='Shuffle', rngfilter=None, mapfilter=None):
+    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
         self.pairmode = pairmode
         self.rngfilter = rngfilter
         self.mapfilter = mapfilter
@@ -396,7 +396,7 @@ class MyPingPong(mympi):
         #name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
-        pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf Shuffle)
+        pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf shuffle)
         #mapfilter: partially defines the way that pairs are generated
         #rngfilter: partially defines the way that pairs are generated
         #ppbarrier: wether or not a barrier is used during the run
@@ -421,7 +421,7 @@ class MyPingPong(mympi):
             nr = int(self.size/2)+1
 
         if not self.pairmode:
-            self.pairmode = 'Shuffle'
+            self.pairmode = 'shuffle'
         if type(seed) == int:
             self.setseed(seed)
         elif self.pairmode in ['shuffle']:
@@ -448,11 +448,8 @@ class MyPingPong(mympi):
 
         data = n.zeros((nr, 3), float)
 
-        exe = "pair=pairs.%s(seed=self.seed,rng=self.size,pairid=self.rank,logger=self.log)" % self.pairmode
         try:
-            # TODO: discover this via getchildren approach
-            exec(exe)
-
+            pair = pairs.Pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
         except Exception as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
