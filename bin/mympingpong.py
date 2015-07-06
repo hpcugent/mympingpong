@@ -48,6 +48,7 @@ from mpi4py.MPI import Wtime as wtime
 
 from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
+from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
 from vsc.utils.missing import get_subclasses
 
@@ -459,7 +460,7 @@ class MyPingPong(mympi):
         data = n.zeros((nr, 3), float)
 
         try:
-            pair = pairs.Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
+            pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
