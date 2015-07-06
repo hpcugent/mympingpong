@@ -100,7 +100,7 @@ class PingPongSR(object):
         for cls in get_subclasses(PingPongSR) + [PingPongSR]:
             if "PingPong%s" % pptype == cls.__name__:
                 return cls(comm, p, log)
-        raise ValueError
+        raise KeyError
     pingpongfactory = staticmethod(pingpongfactory)
 
     def setsr(self):
@@ -195,7 +195,7 @@ class PingPongSRfast(PingPongSR):
 
 
 class PingPongRSfast(PingPongSRfast):
-    
+
     def setcomm(self):
         self.run1 = self.recv
         # flip tags
@@ -226,7 +226,7 @@ class PingPongRSU10(PingPongRSfast):
 
 class PingPongSRfast2(PingPongSRfast):
     """send-receive optimized for pingponging 25 times in a for loop"""
-    
+
     def setsr(self):
         self.groupforce = 25
         self.builtindummyfirst = True
@@ -236,7 +236,7 @@ class PingPongSRfast2(PingPongSRfast):
 
 class PingPongRSfast2(PingPongRSfast):
     """receive-send optimized for pingponging 25 times in a for loop"""
-    
+
     def setsr(self):
         self.groupforce = 25
         self.builtindummyfirst = True
@@ -461,7 +461,7 @@ class MyPingPong(mympi):
 
         try:
             pair = pairs.Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
-        except ValueError as err:
+        except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
