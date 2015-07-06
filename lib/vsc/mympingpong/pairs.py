@@ -73,6 +73,7 @@ class Pair(object):
 
         self.offset = 0
 
+    @staticmethod
     def pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
         """A factory for creating Pair objects"""
 
@@ -81,7 +82,6 @@ class Pair(object):
             if pairmode == cls.__name__.lower():
                 return cls(seed, rng, pairid, logger)
         raise KeyError
-    pairfactory = staticmethod(pairfactory)
 
     def setseed(self,seed=None):
         """set the seed for n.random"""

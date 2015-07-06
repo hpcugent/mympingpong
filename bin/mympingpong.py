@@ -93,6 +93,7 @@ class PingPongSR(object):
 
         self.setcomm()
 
+    @staticmethod
     def pingpongfactory(pptype, comm, p, log):
         """a factory for creating PingPong objects"""
 
@@ -101,7 +102,6 @@ class PingPongSR(object):
             if "PingPong%s" % pptype == cls.__name__:
                 return cls(comm, p, log)
         raise KeyError
-    pingpongfactory = staticmethod(pingpongfactory)
 
     def setsr(self):
         self.send = self.comm.Send
