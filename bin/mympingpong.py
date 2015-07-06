@@ -457,7 +457,7 @@ class MyPingPong(mympi):
             'myhwloc': cpumap[self.rank][2],
         }
 
-        data = []
+        data = n.zeros(nr, float)
 
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
@@ -476,7 +476,7 @@ class MyPingPong(mympi):
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
-        for pair in mypairs:
+        for runid, pair in enumerate(mypairs):
             if barrier:
                 self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
@@ -486,7 +486,7 @@ class MyPingPong(mympi):
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
-            data.append(timing)
+            data[runid] = timing
 
         res['pairs'] = mypairs
         res['data'] = data
