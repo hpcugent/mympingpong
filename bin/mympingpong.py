@@ -450,7 +450,7 @@ class MyPingPong(mympi):
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
         pair.setnr(nr)
 
-        if nr > math.factorial(self.size):
+        if nr > (2 * (self.size-1):
             # the amount of pairs made is greater that the amount of possible combinations
             # therefore, create the keys beforehand to minimize hash collisions
             data = dict.fromkeys(permutations(range(self.size), 2))
