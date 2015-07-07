@@ -105,8 +105,9 @@ class PingPongAnalysis(object):
                     self.log.debug("No valid data for pair %s", key)
                     fail[key[n.where(key > -1)[0][0]]] += 1
                     continue
-                data[key[0]][key[1]] += val[1]
-                count[key[0]][key[1]] += val[0]
+                x, y = key
+                count[x][y] += val[0]
+                data[x][y] += val[1]
 
         # transform into array
         nodemap = n.array(nodemap)
