@@ -452,6 +452,7 @@ class MyPingPong(mympi):
 
         if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
+            # possible combinations are the permutations of range(size) that contain rank
             # therefore, create the keys beforehand to minimize hash collisions
             keys = [tup for tup in permutations(range(self.size), 2) if self.rank in tup]
             data = dict.fromkeys(keys, (0,0))
