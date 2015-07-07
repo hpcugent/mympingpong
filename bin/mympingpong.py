@@ -394,7 +394,7 @@ class MyPingPong(mympi):
         seed: a seed for the random number generator used in pairs.py, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
-        nr: the number of pairs that will be made for eqch Processing Unit, in other words the sample size
+        nr: the number of pairs that will be made for each Processing Unit, in other words the sample size
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
