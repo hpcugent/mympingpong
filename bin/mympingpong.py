@@ -450,10 +450,10 @@ class MyPingPong(mympi):
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
         pair.setnr(nr)
 
-        if nr > (2 * (self.size-1):
+        if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
             # therefore, create the keys beforehand to minimize hash collisions
-            data = dict.fromkeys(permutations(range(self.size), 2))
+            data = dict.fromkeys(permutations(range(self.size), 2), (0,0))
             self.log.debug("created a datadict from keys")
         else:
             data = dict()
@@ -480,10 +480,9 @@ class MyPingPong(mympi):
 
             key = tuple(pair)
             self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
-            if key in data:
-                data[key] = (data[key][0] + 1, data[key][1] + timing)
-            else:
-                data[key] = (1, timing)
+            self.log.debug("datatype: %s, data: %s", type(data), data.get(key, (0,0)))
+            count, old_timing = data.get(key, (0, 0))
+            data[key] = (count + 1, old_timing + timing)
   
         res['data'] = data
 
