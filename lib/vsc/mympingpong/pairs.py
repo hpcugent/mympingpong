@@ -42,6 +42,7 @@ import copy
 
 import numpy as n
 
+from vsc.utils.missing import get_subclasses
 
 class Pair(object):
 
@@ -71,6 +72,16 @@ class Pair(object):
             self.setpairid(pairid)
 
         self.offset = 0
+
+    @staticmethod
+    def pairfactory(pairmode, seed=None, rng=None, pairid=None, logger=None):
+        """A factory for creating Pair objects"""
+
+        logger.debug("in pairfactory with pairmode %s", pairmode)
+        for cls in get_subclasses(Pair, include_base_class=True):
+            if pairmode == cls.__name__.lower():
+                return cls(seed, rng, pairid, logger)
+        raise KeyError
 
     def setseed(self,seed=None):
         """set the seed for n.random"""
