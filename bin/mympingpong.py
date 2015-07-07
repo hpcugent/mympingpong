@@ -453,8 +453,9 @@ class MyPingPong(mympi):
         if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
             # therefore, create the keys beforehand to minimize hash collisions
-            data = dict.fromkeys(permutations(range(self.size), 2), (0,0))
-            self.log.debug("created a datadict from keys")
+            keys = [tup for tup in permutations(range(self.size), 2) if self.rank in tup]
+            data = dict.fromkeys(keys, (0,0))
+            self.log.debug("created a datadict from keys: %s", data)
         else:
             data = dict()
             self.log.debug("created an empty datadict")
@@ -480,7 +481,6 @@ class MyPingPong(mympi):
 
             key = tuple(pair)
             self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
-            self.log.debug("datatype: %s, data: %s", type(data), data.get(key, (0,0)))
             count, old_timing = data.get(key, (0, 0))
             data[key] = (count + 1, old_timing + timing)
   
