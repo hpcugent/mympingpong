@@ -33,7 +33,6 @@ TODO:
  - factor out the pingpong class in vsc.mympingpong.pingpong
  - refactor mypingpong class in regular main() function
 """
-
 # this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
 
@@ -132,7 +131,7 @@ class PingPongSR(object):
 
         avg = n.average((self.end-self.start)/(2.0*group))
 
-        return avg, self.start, self.end
+        return avg
 
 
 class PingPongRS(PingPongSR):
@@ -191,7 +190,7 @@ class PingPongSRfast(PingPongSR):
 
         avg = n.average((self.end-self.start) / (2.0*group))
 
-        return avg, self.start, self.end
+        return avg
 
 
 class PingPongRSfast(PingPongSRfast):
@@ -393,33 +392,22 @@ class MyPingPong(mympi):
         seed: a seed for the random number generator used in pairs.py, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
-        nr: the number of pairs that will be made, in other words the sample size
+        nr: the number of pairs that will be made for eqch Processing Unit, in other words the sample size
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
         nothing, but will write a dict to a file defined by the -f parameter.
 
-        # => not used in mympingponganalysis
-
-        #myrank: MPI jobrank of the task
+        myrank: MPI jobrank of the task
         nr_tests: number of tests, given by the -n argument
         totalranks: total amount of MPI jobs
-        #name: the MPI processor name
+        name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
         pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf shuffle)
-        #mapfilter: partially defines the way that pairs are generated
-        #rngfilter: partially defines the way that pairs are generated
-        #ppbarrier: wether or not a barrier is used during the run
-        #mycore: the processor unit that is being used for the task
-        #myhwloc: the socket id and core id of the aformentioned processor unit
-        #pairs: a list of pairs that has been used in the test
-        #data: a list of timing data for each pingpong between pairs
-        #ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
-        #ppbuiltindummyfirst: True if the pingpong method uses a built in dummyrun
         """
 
         # highest precision mode till now. has 25 internal grouped tests
@@ -450,14 +438,9 @@ class MyPingPong(mympi):
             'msgsize': msgsize,
             'iter': it,
             'pairmode': self.pairmode,
-            'mapfilter': self.mapfilter,
-            'rngfilter': self.rngfilter,
-            'ppbarrier': barrier,
-            'mycore': cpumap[self.rank][1],
-            'myhwloc': cpumap[self.rank][2],
         }
 
-        data = n.zeros((nr, 3), float)
+        data = n.zeros(nr, float)
 
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
@@ -516,11 +499,9 @@ class MyPingPong(mympi):
         """
 
         details = {
-            'ppdummyfirst': dummyfirst,
             'ppmode': pmode,
             'ppgroup': None,
             'ppiterations': None,
-            'ppbuiltindummyfirst': None
         }
 
         if not dat:
@@ -554,18 +535,15 @@ class MyPingPong(mympi):
 
         if self.master:
             self.log.info("runpingpong: starting dopingpong")
-        avg, start, end = pp.dopingpong(it)
+        timing = float(pp.dopingpong(it))
         if self.master:
             self.log.info("runpingpong: end dopingpong")
 
-        timing = [float(avg), float(start[0]), float(end[0])]
-
-        self.log.debug("pingpong p1 %s p2 %s avg/start/end %s", p1, p2, timing)
+        self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
 
         details.update({
             'ppgroup': pp.group,
             'ppiterations': pp.it,
-            'ppbuiltindummyfirst': pp.builtindummyfirst
         })
 
         return timing, details
