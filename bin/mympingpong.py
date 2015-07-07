@@ -37,9 +37,11 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import copy
+import math
 import os
 import re
 import sys
+from itertools import permutations
 
 import numpy as n
 from lxml import etree
@@ -440,16 +442,22 @@ class MyPingPong(mympi):
             'pairmode': self.pairmode,
         }
 
-        data = n.zeros(nr, float)
-
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
-
         pair.setnr(nr)
+
+        if nr > math.factorial(self.size):
+            # the amount of pairs made is greater that the amount of possible combinations
+            # therefore, create the keys beforehand to minimize hash collisions
+            data = dict.fromkeys(permutations(range(self.size), 2))
+            self.log.debug("created a datadict from keys")
+        else:
+            data = dict()
+            self.log.debug("created an empty datadict")
 
         mypairs = pair.makepairs()
         if self.master:
@@ -469,9 +477,14 @@ class MyPingPong(mympi):
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
-            data[runid] = timing
 
-        res['pairs'] = mypairs
+            key = tuple(pair)
+            self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
+            if key in data:
+                data[key] = (data[key][0] + 1, data[key][1] + timing)
+            else:
+                data[key] = (1, timing)
+  
         res['data'] = data
 
         # add the details

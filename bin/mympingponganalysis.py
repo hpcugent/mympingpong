@@ -97,14 +97,23 @@ class PingPongAnalysis(object):
                 nodemap[el['myrank']] = el['name'].split('.')[0]
             else:
                 nodemap[el['myrank']] = el['name']
+<<<<<<< HEAD
             for i in xrange(el['nr_tests']):
                 ind = el['pairs'][i]
                 if (-1 in ind) or (-2 in ind):
                     self.log.debug("No valid data for pair %s"%ind)
                     fail[ind[n.where(ind > -1)[0][0]]] += 1
+=======
+            for key, val in el['data'].iteritems():
+                self.log.debug("found data: key: %s, val: %s", key, val)
+                
+                if (-1 in key) or (-2 in key):
+                    self.log.debug("No valid data for pair %s", key)
+                    fail[key[n.where(key > -1)[0][0]]] += 1
+>>>>>>> eced935... merged data to significantly reduce output size
                     continue
-                data[ind[0]][ind[1]] += el['data'][i]
-                count[ind[0]][ind[1]] += 1
+                data[key[0]][key[1]] += val[1]
+                count[key[0]][key[1]] += val[0]
 
         # transform into array
         nodemap = n.array(nodemap)
