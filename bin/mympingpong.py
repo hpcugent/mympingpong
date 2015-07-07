@@ -405,18 +405,9 @@ class MyPingPong(mympi):
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
         pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf shuffle)
-        #mapfilter: partially defines the way that pairs are generated
-        #rngfilter: partially defines the way that pairs are generated
-        #ppbarrier: wether or not a barrier is used during the run
-        #mycore: the processor unit that is being used for the task
-        #myhwloc: the socket id and core id of the aformentioned processor unit
-        #pairs: a list of pairs that has been used in the test
-        #data: a list of timing data for each pingpong between pairs
-        #ppdummyfirst: wether or not a dummyrun is executed before the actual iterations
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
-        #ppbuiltindummyfirst: True if the pingpong method uses a built in dummyrun
         """
 
         # highest precision mode till now. has 25 internal grouped tests
