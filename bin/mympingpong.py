@@ -37,6 +37,7 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import copy
+import cPickle
 import math
 import os
 import re
@@ -401,7 +402,7 @@ class MyPingPong(mympi):
         nothing, but will write a dict to a file defined by the -f parameter.
 
         myrank: MPI jobrank of the task
-        nr_tests: number of tests, given by the -n argument
+        nr_tests: number of pairs made, given by the -n argument
         totalranks: total amount of MPI jobs
         name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
@@ -410,6 +411,7 @@ class MyPingPong(mympi):
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
+        data: a dict that maps a pair to its amount of tests done and the sum of the timing of these tests
         """
 
         # highest precision mode till now. has 25 internal grouped tests
@@ -452,11 +454,11 @@ class MyPingPong(mympi):
 
         if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
-            # possible combinations are the permutations of range(size) that contain rank
             # therefore, create the keys beforehand to minimize hash collisions
+            # possible combinations are the permutations of range(size) that contain rank
             keys = [tup for tup in permutations(range(self.size), 2) if self.rank in tup]
             data = dict.fromkeys(keys, (0,0))
-            self.log.debug("created a datadict from keys: %s", data)
+            self.log.debug("created a datadict from keys: %s", keys)
         else:
             data = dict()
             self.log.debug("created an empty datadict")
