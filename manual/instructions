@@ -33,8 +33,6 @@ pip install vsc-base
 pip install https://github.com/hpcugent/vsc-mympirun/archive/vsc-mympirun-3.4.2.tar.gz 
 
 
-
-
 EXPORTS LAPTOP
 ================
 export PATH=$PATH:~/.local/bin

@@ -47,6 +47,7 @@ from itertools import permutations
 import numpy as n
 from lxml import etree
 from mpi4py.MPI import Wtime as wtime
+import h5py
 
 from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
@@ -452,6 +453,7 @@ class MyPingPong(mympi):
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
         pair.setnr(nr)
 
+        # old
         if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
             # therefore, create the keys beforehand to minimize hash collisions
@@ -483,14 +485,39 @@ class MyPingPong(mympi):
                 self.comm.barrier()
 
             key = tuple(pair)
-            self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
             count, old_timing = data.get(key, (0, 0))
             data[key] = (count + 1, old_timing + timing)
   
         res['data'] = data
 
+        self.log.debug("data: %s", data)
+
+        f = h5py.File('%s.hdf5' %self.fn, 'w', driver='mpio', comm=self.comm)
+
+        f.attrs['myrank'] = self.rank
+        f.attrs['nr_tests'] = nr
+        f.attrs['totalranks'] = self.size
+        f.attrs['name'] = self.name
+        f.attrs['msgsize'] = msgsize
+        f.attrs['iter'] = it
+        f.attrs['pairmode'] = self.pairmode
+
+        hdf5data = f.create_group('data')
+
+        for tup in permutations(range(self.size), 2):
+            hdf5data.create_dataset(str(tup),(2,), 'f')
+
+        for key in data:
+            count, timing = data.get(key)
+            d = hdf5data.get(str(key))
+            self.log.debug("add to data: key: %s, count: %s, timing: %s", key, count, timing)
+
+            d[0] = d[0] + float(count)
+            d[1] = d[1] + timing
+
         # add the details
         res.update(pmodedetails)
+        f.close()
 
         self.write(res)
 
