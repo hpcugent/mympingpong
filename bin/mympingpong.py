@@ -481,12 +481,14 @@ class MyPingPong(mympi):
 
     def writehdf5(self, data, attributes):
 
+        self.log.debug("wrting data to hdf5: %s", data)
         f = h5py.File('%s.hdf5' %self.fn, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
             self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
+        """
         hdf5data = f.create_group('data')
 
         for tup in permutations(range(self.size), 2):
@@ -504,6 +506,18 @@ class MyPingPong(mympi):
 
             d[2] = d[2] + float(count)
             d[3] = d[3] + timing
+        """
+
+        hdf5dataset = f.create_dataset('data', (self.size,self.size,2), 'f')
+        for ind, item in enumerate(data.items()):
+            if item[0][0] != self.rank:
+                # we only use the timingdata from the sender
+                continue
+            key = item[0]
+            val = item[1]
+            self.log.debug("dataset ind: %s, key: %s, val: %s", ind, key , val)
+            hdf5dataset[key[0],key[1]] = (val[0], val[1])
+
         f.close()
 
 

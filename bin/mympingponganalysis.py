@@ -83,18 +83,19 @@ class PingPongAnalysis(object):
         fail = n.zeros((size, 1), float)
 
         hdf5data = f['data']
-        for k, v in hdf5data.iteritems():
-            self.log.debug("got data: k: %s, p1: %s, p2: %s, count: %s, timing: %s", k, v[0], v[1], v[2], v[3])
-            x = v[0]
-            y = v[1]
-            key = (x, y)
-
-            if (-1 in key) or (-2 in key):
-                self.log.debug("No valid data for pair %s", key)
-                fail[key[n.where(key > -1)[0][0]]] += 1
-                continue
-            count[x][y] += v[2]
-            data[x][y] += v[3]
+        dim = hdf5data.len()
+        for x in range(dim):
+            for y in range(dim):
+                val = hdf5data[x,y]
+                self.log.debug("got data: %s", val)
+                
+                if (-1 in (x,y)) or (-2 in (x,y)):
+                    self.log.debug("No valid data for pair %s", key)
+                    fail[key[n.where(key > -1)[0][0]]] += 1
+                    continue
+                count[x][y] += val[0]
+                data[x][y] += val[1]
+                
 
         # renormalise
         data = data*self.scaling
