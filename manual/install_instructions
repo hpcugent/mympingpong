@@ -19,10 +19,12 @@ wget https://pypi.python.org/packages/source/h/h5py/h5py-2.5.0.tar.gz#md5=6e4301
 tar -xzf h5py-2.5.0.tar.gz
 cd h5py-2.5.0
 export CC=mpicc
+python setup.py configure --hdf5=/path/to/hdf5-1.8.15-patch1/hdf5/
 python setup.py configure --mpi
 python setup.py build 
+python setup.py install --user
 
-# setting up mpi4py
+#setting up mpi4py
 mkdir mpi4py
 
 version=1.3.1
