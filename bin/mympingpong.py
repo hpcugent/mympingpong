@@ -37,9 +37,12 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import copy
+import cPickle
+import math
 import os
 import re
 import sys
+from itertools import permutations
 
 import numpy as n
 from lxml import etree
@@ -392,14 +395,14 @@ class MyPingPong(mympi):
         seed: a seed for the random number generator used in pairs.py, should be an int.
         msgsize: size of the data that will be sent between pairs
         it: amount of times a pair will send and receive from eachother
-        nr: the number of pairs that will be made for eqch Processing Unit, in other words the sample size
+        nr: the number of pairs that will be made for each Processing Unit, in other words the sample size
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
         nothing, but will write a dict to a file defined by the -f parameter.
 
         myrank: MPI jobrank of the task
-        nr_tests: number of tests, given by the -n argument
+        nr_tests: number of pairs made, given by the -n argument
         totalranks: total amount of MPI jobs
         name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
@@ -408,6 +411,7 @@ class MyPingPong(mympi):
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
+        data: a dict that maps a pair to its amount of tests done and the sum of the timing of these tests
         """
 
         # highest precision mode till now. has 25 internal grouped tests
@@ -440,16 +444,24 @@ class MyPingPong(mympi):
             'pairmode': self.pairmode,
         }
 
-        data = n.zeros(nr, float)
-
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
 
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
-
         pair.setnr(nr)
+
+        if nr > (2 * (self.size-1)):
+            # the amount of pairs made is greater that the amount of possible combinations
+            # therefore, create the keys beforehand to minimize hash collisions
+            # possible combinations are the permutations of range(size) that contain rank
+            keys = [tup for tup in permutations(range(self.size), 2) if self.rank in tup]
+            data = dict.fromkeys(keys, (0,0))
+            self.log.debug("created a datadict from keys: %s", keys)
+        else:
+            data = dict()
+            self.log.debug("created an empty datadict")
 
         mypairs = pair.makepairs()
         if self.master:
@@ -469,9 +481,12 @@ class MyPingPong(mympi):
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
-            data[runid] = timing
 
-        res['pairs'] = mypairs
+            key = tuple(pair)
+            self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
+            count, old_timing = data.get(key, (0, 0))
+            data[key] = (count + 1, old_timing + timing)
+  
         res['data'] = data
 
         # add the details
