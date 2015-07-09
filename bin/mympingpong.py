@@ -494,7 +494,6 @@ class MyPingPong(mympi):
 
         f = h5py.File('%s.hdf5' %self.fn, 'w', driver='mpio', comm=self.comm)
 
-        f.attrs['myrank'] = self.rank
         f.attrs['nr_tests'] = nr
         f.attrs['totalranks'] = self.size
         f.attrs['name'] = self.name
@@ -505,15 +504,20 @@ class MyPingPong(mympi):
         hdf5data = f.create_group('data')
 
         for tup in permutations(range(self.size), 2):
-            hdf5data.create_dataset(str(tup),(2,), 'f')
+            d = hdf5data.create_dataset(str(tup),(4,), 'f')
+            d[0] = tup[0]
+            d[1] = tup[1]
 
         for key in data:
+            if key[0] != self.rank:
+                # we only use the timingdata from the sender
+                continue
             count, timing = data.get(key)
             d = hdf5data.get(str(key))
             self.log.debug("add to data: key: %s, count: %s, timing: %s", key, count, timing)
 
-            d[0] = d[0] + float(count)
-            d[1] = d[1] + timing
+            d[2] = d[2] + float(count)
+            d[3] = d[3] + timing
 
         # add the details
         res.update(pmodedetails)

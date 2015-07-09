@@ -42,6 +42,9 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as ppl
 import matplotlib.cm as cm
 from matplotlib.colorbar import Colorbar, make_axes
+import h5py
+from mpi4py import MPI
+
 
 from vsc.mympingpong.mympi import mympi
 from vsc.utils.generaloption import simple_option
@@ -65,6 +68,51 @@ class PingPongAnalysis(object):
         self.meta = None
 
         self.cmap = None
+
+    def collecthdf5(self, fn):
+
+        f = h5py.File(fn+'.hdf5', 'r')
+
+        meta = {}
+        for k, v in f.attrs.iteritems():
+            meta[k] = v
+        self.log.debug("got metadata: %s", meta)
+
+        size = meta['totalranks']
+
+        data = n.zeros((size, size), float)
+        count = n.zeros((size, size), float)
+        fail = n.zeros((size, 1), float)
+
+        hdf5data = f['data']
+        for k, v in hdf5data.iteritems():
+            self.log.debug("got data: k: %s, p1: %s, p2: %s, count: %s, timing: %s", k, v[0], v[1], v[2], v[3])
+            x = v[0]
+            y = v[1]
+            key = (x, y)
+
+            if (-1 in key) or (-2 in key):
+                self.log.debug("No valid data for pair %s", key)
+                fail[key[n.where(key > -1)[0][0]]] += 1
+                continue
+            count[x][y] += v[2]
+            data[x][y] += v[3]
+
+        # renormalise
+        data = data*self.scaling
+        data = data/n.where(count == 0, 1, count)
+        # get rid of Nan?
+
+        self.data = data
+        self.log.debug("collect data:\n%s" % data)
+        self.count = count
+        self.log.debug("collect count:\n%s" % count)
+        self.fail = fail
+        self.log.debug("collect fail:\n%s" % fail)
+        self.meta = meta
+        self.log.debug("collect meta:\n%s" % meta)
+
+        f.close()
 
     def collect(self, ppdata):
         """ 
@@ -299,8 +347,9 @@ if __name__ == '__main__':
 
     m.setfn(go.options.input)
     data = m.read()
-    # print data
+    print data
 
     ppa = PingPongAnalysis(go.log)
+    #ppa.collecthdf5(go.options.input)
     ppa.collect(data)
     ppa.plot()
