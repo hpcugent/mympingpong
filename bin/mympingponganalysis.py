@@ -71,45 +71,22 @@ class PingPongAnalysis(object):
 
         f = h5py.File(fn+'.hdf5', 'r')
 
-        meta = {}
-        for k, v in f.attrs.iteritems():
-            meta[k] = v
-        self.log.debug("got metadata: %s", meta)
+        self.count = f['data'][...,0]
+        self.log.debug("collect count:\n%s" % self.count)
+        self.fail = f['fail'][...]
+        self.log.debug("collect fail:\n%s" % self.fail)
+        self.meta = dict(f.attrs.items())
+        self.log.debug("collect meta:\n%s" % self.meta)     
 
-        size = meta['totalranks']
-
-        data = n.zeros((size, size), float)
-        count = n.zeros((size, size), float)
-        fail = n.zeros((size, 1), float)
-
-        hdf5data = f['data']
-        dim = hdf5data.len()
-        for x in range(dim):
-            for y in range(dim):
-                val = hdf5data[x,y]
-                self.log.debug("got data: %s", val)
-                
-                if (-1 in (x,y)) or (-2 in (x,y)):
-                    self.log.debug("No valid data for pair %s", key)
-                    fail[key[n.where(key > -1)[0][0]]] += 1
-                    continue
-                count[x][y] += val[0]
-                data[x][y] += val[1]
-                
+        data = f['data'][...,1]
 
         # renormalise
         data = data*self.scaling
-        data = data/n.where(count == 0, 1, count)
+        data = data/n.where(self.count == 0, 1, self.count)
         # get rid of Nan?
 
         self.data = data
         self.log.debug("collect data:\n%s" % data)
-        self.count = count
-        self.log.debug("collect count:\n%s" % count)
-        self.fail = fail
-        self.log.debug("collect fail:\n%s" % fail)
-        self.meta = meta
-        self.log.debug("collect meta:\n%s" % meta)
 
         f.close()
 

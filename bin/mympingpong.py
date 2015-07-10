@@ -444,6 +444,7 @@ class MyPingPong(mympi):
         else:
             data = dict()
             self.log.debug("created an empty datadict")
+        fail = n.zeros((self.size, 1), float)
 
         # introduce barrier
         self.comm.barrier()
@@ -462,8 +463,13 @@ class MyPingPong(mympi):
                 self.comm.barrier()
 
             key = tuple(pair)
-            count, old_timing = data.get(key, (0, 0))
-            data[key] = (count + 1, old_timing + timing)
+            try:
+                count, old_timing = data.get(key, (0, 0))
+                data[key] = (count + 1, old_timing + timing)
+            except KeyError as err:
+                self.log.error("pair %s is not in permutation", key)
+                if (-1 in key) or (-2 in key):
+                    fail[key[n.where(key > -1)[0][0]]] += 1
 
         attrs = {
             'pairmode': self.pairmode,
@@ -475,11 +481,11 @@ class MyPingPong(mympi):
         }
         attrs.update(pmodedetails)
 
-        self.writehdf5(data, attrs)  
+        self.writehdf5(data, attrs, fail)  
 
 
 
-    def writehdf5(self, data, attributes):
+    def writehdf5(self, data, attributes, fail):
 
         self.log.debug("wrting data to hdf5: %s", data)
         f = h5py.File('%s.hdf5' %self.fn, 'w', driver='mpio', comm=self.comm)
@@ -488,27 +494,7 @@ class MyPingPong(mympi):
             f.attrs[k] = v
             self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
-        """
-        hdf5data = f.create_group('data')
-
-        for tup in permutations(range(self.size), 2):
-            d = hdf5data.create_dataset(str(tup),(4,), 'f')
-            d[0] = tup[0]
-            d[1] = tup[1]
-
-        for key in data:
-            if key[0] != self.rank:
-                # we only use the timingdata from the sender
-                continue
-            count, timing = data.get(key)
-            d = hdf5data.get(str(key))
-            self.log.debug("add to data: key: %s, count: %s, timing: %s", key, count, timing)
-
-            d[2] = d[2] + float(count)
-            d[3] = d[3] + timing
-        """
-
-        hdf5dataset = f.create_dataset('data', (self.size,self.size,2), 'f')
+        dataset = f.create_dataset('data', (self.size,self.size,2), 'f')
         for ind, item in enumerate(data.items()):
             if item[0][0] != self.rank:
                 # we only use the timingdata from the sender
@@ -516,7 +502,11 @@ class MyPingPong(mympi):
             key = item[0]
             val = item[1]
             self.log.debug("dataset ind: %s, key: %s, val: %s", ind, key , val)
-            hdf5dataset[key[0],key[1]] = (val[0], val[1])
+            dataset[key[0],key[1]] = (val[0], val[1])
+
+        failset = f.create_dataset('fail', (1,self.size), data=fail)
+
+
 
         f.close()
 
