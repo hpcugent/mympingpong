@@ -74,10 +74,11 @@ class PingPongAnalysis(object):
         self.meta = dict(f.attrs.items())
         self.log.debug("collect meta: %s" % self.meta)     
 
-        self.fail = f['fail'][...]
+        self.fail = f['fail'][:]
         self.log.debug("collect fail: %s" % self.fail)
 
-        self.count = f['data'][...,0]
+        #http://stackoverflow.com/a/118508
+        self.count = f['data'][...,0] 
         self.log.debug("collect count: %s" % self.count)
 
         data = f['data'][...,1]
