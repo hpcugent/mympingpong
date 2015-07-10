@@ -69,22 +69,22 @@ class PingPongAnalysis(object):
     def collecthdf5(self, fn):
         """collects metatags, failures, counters and timingdata from fn.hdf5"""
 
-        f = h5py.File(fn+'.hdf5', 'r')
+        f = h5py.File('%s.hdf5' % fn, 'r')
 
         self.meta = dict(f.attrs.items())
-        self.log.debug("collect meta:\n%s" % self.meta)     
+        self.log.debug("collect meta: %s" % self.meta)     
 
         self.fail = f['fail'][...]
-        self.log.debug("collect fail:\n%s" % self.fail)
+        self.log.debug("collect fail: %s" % self.fail)
 
         self.count = f['data'][...,0]
-        self.log.debug("collect count:\n%s" % self.count)
+        self.log.debug("collect count: %s" % self.count)
 
         data = f['data'][...,1]
         data = data*self.scaling
         data = data/n.where(self.count == 0, 1, self.count)
         self.data = data
-        self.log.debug("collect data:\n%s" % data)
+        self.log.debug("collect data: %s" % data)
 
         f.close()
 
