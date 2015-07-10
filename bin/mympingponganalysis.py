@@ -36,14 +36,13 @@ import re
 import warnings
 from math import sqrt
 
+import h5py
 import matplotlib as mp
-import numpy as n
 import matplotlib.patches as patches
 import matplotlib.pyplot as ppl
 import matplotlib.cm as cm
+import numpy as n
 from matplotlib.colorbar import Colorbar, make_axes
-import h5py
-from mpi4py import MPI
 
 from vsc.utils.generaloption import simple_option
 
@@ -68,23 +67,22 @@ class PingPongAnalysis(object):
         self.cmap = None
 
     def collecthdf5(self, fn):
+        """collects metatags, failures, counters and timingdata from fn.hdf5"""
 
         f = h5py.File(fn+'.hdf5', 'r')
 
-        self.count = f['data'][...,0]
-        self.log.debug("collect count:\n%s" % self.count)
-        self.fail = f['fail'][...]
-        self.log.debug("collect fail:\n%s" % self.fail)
         self.meta = dict(f.attrs.items())
         self.log.debug("collect meta:\n%s" % self.meta)     
 
-        data = f['data'][...,1]
+        self.fail = f['fail'][...]
+        self.log.debug("collect fail:\n%s" % self.fail)
 
-        # renormalise
+        self.count = f['data'][...,0]
+        self.log.debug("collect count:\n%s" % self.count)
+
+        data = f['data'][...,1]
         data = data*self.scaling
         data = data/n.where(self.count == 0, 1, self.count)
-        # get rid of Nan?
-
         self.data = data
         self.log.debug("collect data:\n%s" % data)
 
@@ -102,7 +100,7 @@ class PingPongAnalysis(object):
         top = bottom + height
 
         cols = 3
-        tags = self.metatags
+        tags = self.meta.keys()
         nrmeta = len(tags)
         if nrmeta % cols == 1:
             nrmeta += 1

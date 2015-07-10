@@ -37,21 +37,19 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import copy
-import cPickle
 import math
 import os
 import re
 import sys
 from itertools import permutations
 
+import h5py
 import numpy as n
 from lxml import etree
 from mpi4py.MPI import Wtime as wtime
-import h5py
-import mpi4py
 
-from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
+from vsc.mympingpong.mympi import mympi, getshared
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
 from vsc.utils.missing import get_subclasses
@@ -483,8 +481,6 @@ class MyPingPong(mympi):
 
         self.writehdf5(data, attrs, fail)  
 
-
-
     def writehdf5(self, data, attributes, fail):
 
         self.log.debug("wrting data to hdf5: %s", data)
@@ -506,10 +502,7 @@ class MyPingPong(mympi):
 
         failset = f.create_dataset('fail', (1,self.size), data=fail)
 
-
-
         f.close()
-
 
     def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
         """
