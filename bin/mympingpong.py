@@ -496,13 +496,13 @@ class MyPingPong(mympi):
             f.attrs[k] = v
             self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
-        dataset = f.create_dataset('data', (self.size,self.size,2), 'f')
+        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
         for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
             if sendrank != self.rank:
                 # we only use the timingdata if the current rank is the sender
                 continue
             self.log.debug("dataset ind: %s, key: %s, val: %s", ind, (sendrank,recvrank), val)
-            dataset[sendrank,recvrank] = (val[0], val[1])
+            dataset[sendrank,recvrank] = tuple(val)
 
         failset = f.create_dataset('fail', (1,self.size), data=fail)
 
