@@ -74,8 +74,9 @@ class PingPongAnalysis(object):
         self.meta = dict(f.attrs.items())
         self.log.debug("collect meta: %s" % self.meta)     
 
-        self.fail = f['fail'][:]
-        self.log.debug("collect fail: %s" % self.fail)
+        if self.meta['failed']:
+            self.fail = f['fail'][:]
+            self.log.debug("collect fail: %s" % self.fail)
 
         #http://stackoverflow.com/a/118508
         self.count = f['data'][...,0] 
@@ -103,7 +104,7 @@ class PingPongAnalysis(object):
         cols = 3
         tags = self.meta.keys()
         nrmeta = len(tags)
-        if nrmeta % cols == 1:
+        while nrmeta % cols != 0:
             nrmeta += 1
             tags.append(None)
         layout = n.array(tags).reshape(nrmeta/cols, cols)
