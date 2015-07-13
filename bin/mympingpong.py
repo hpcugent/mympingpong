@@ -258,13 +258,13 @@ class MyPingPong(object):
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
-    def setfn(self, fn, remove=True):
-        self.fn = fn
+    def setfn(self, directory, it, nr, remove=True):
+        self.fn = '%s/PPsize%s-it%s-nr%s.h5' % (directory, self.size, it ,nr)
         if remove and os.path.exists(self.fn):
             try:
-                MPI.File.Delete(fn)
+                MPI.File.Delete(self.fn)
             except Exception as err:
-                self.log.error("Failed to delete file %s: %s" % (fn, err))
+                self.log.error("Failed to delete file %s: %s" % (self.fn, err))
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
         self.pairmode = pairmode
@@ -566,7 +566,7 @@ class MyPingPong(object):
         fail: a 2D array containing information on how many times a rank has failed a test
         """
 
-        f = h5py.File('%s/PPsize%s-it%s-nr%s.h5' % (self.fn,self.size,attributes['iter'],attributes['nr_tests']), 'w', driver='mpio', comm=self.comm)
+        f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
@@ -603,7 +603,7 @@ if __name__ == '__main__':
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(go.options.output)
+    m.setfn(go.options.output, go.options.iterations, go.options.number)
 
     if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
