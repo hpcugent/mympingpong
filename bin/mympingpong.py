@@ -45,6 +45,7 @@ import datetime
 >>>>>>> split off pingpongers + cleaned imports
 import os
 import re
+import sys
 from itertools import permutations
 
 import h5py
