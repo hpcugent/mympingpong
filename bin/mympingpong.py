@@ -447,22 +447,21 @@ class MyPingPong(mympi):
         else:
             data = dict()
             self.log.debug("created an empty datadict")
-        fail = n.zeros((self.size, 1), float)
+        fail = n.zeros((self.size, self.size), int)
 
         # introduce barrier
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
+        pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
         for runid, pair in enumerate(mypairs):
             if barrier:
-                self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
 
-            timing, pmodedetails = self.pingpong(pair[0], pair[1], dat=dattosend, it=it)
+            timing, pmodedetails = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend, it=it)
 
             if barrier2:
-                self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
 
             key = tuple(pair)
@@ -471,8 +470,10 @@ class MyPingPong(mympi):
                 data[key] = (count + 1, old_timing + timing)
             except KeyError as err:
                 self.log.error("pair %s is not in permutation", key)
-                if (-1 in key) or (-2 in key):
-                    fail[key[n.where(key > -1)[0][0]]] += 1
+            if (-1 in key) or (-2 in key):
+                fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
+
+        failed = True if n.count_nonzero(fail) > 0 else False
 
         attrs = {
             'pairmode': self.pairmode,
@@ -481,12 +482,13 @@ class MyPingPong(mympi):
             'nr_tests': nr,
             'msgsize': msgsize,
             'iter': it,
+            'pingpongmode' : pmode
         }
-        attrs.update(pmodedetails)
+        #attrs.update(pmodedetails)
 
-        self.writehdf5(data, attrs, fail)  
+        self.writehdf5(data, attrs, failed, fail)  
 
-    def writehdf5(self, data, attributes, fail):
+    def writehdf5(self, data, attributes, failed, fail):
         """writes data to a .hdf5 defined by the -f parameter"""
 
         self.log.debug("wrting data to hdf5: %s", data)
@@ -501,10 +503,12 @@ class MyPingPong(mympi):
             if sendrank != self.rank:
                 # we only use the timingdata if the current rank is the sender
                 continue
-            self.log.debug("dataset ind: %s, key: %s, val: %s", ind, (sendrank,recvrank), val)
             dataset[sendrank,recvrank] = tuple(val)
 
-        failset = f.create_dataset('fail', (1,self.size), data=fail)
+        if failed:
+            self.log.debug("failed")
+            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
+            failset[self.rank] = fail[self.rank]
 
         f.close()
 
@@ -532,14 +536,14 @@ class MyPingPong(mympi):
             dat = self.makedata()
         if p1 == p2:
             self.log.debug("pingpong: do nothing p1 == p2")
-            return -1, details
+            return -1, {}
 
         if (p1 == -1) or (p2 == -1):
             self.log.debug("pingpong: do nothing: 0 results in pair (ps: %s p2 %s)", p1, p2)
-            return -1, details
+            return -1, {}
         if (p1 == -2) or (p2 == -2):
             self.log.debug("pingpong: do nothing: result from odd number of elements (ps: %s p2 %s)", p1, p2)
-            return -1, details
+            return -1, {}
 
         if test:
             pp = PingPongSR.pingpongfactory('test')
@@ -549,7 +553,7 @@ class MyPingPong(mympi):
             pp = PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
         else:
             self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
-            return -1, details
+            return -1, {}
 
         pp.setdat(dat)
 

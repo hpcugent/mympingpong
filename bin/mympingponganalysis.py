@@ -103,7 +103,7 @@ class PingPongAnalysis(object):
         cols = 3
         tags = self.meta.keys()
         nrmeta = len(tags)
-        if nrmeta % cols == 1:
+        while nrmeta % cols != 0:
             nrmeta += 1
             tags.append(None)
         layout = n.array(tags).reshape(nrmeta/cols, cols)
