@@ -273,6 +273,7 @@ class MyPingPong(object):
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
     def makedata(self, l=1024L):
+        """create data with size l (in Bytes)"""
         return array.array('c', '\0'*l)
 
     def getprocinfo(self):
@@ -556,7 +557,7 @@ class MyPingPong(object):
 
     def writehdf5(self, data, attributes, failed, fail):
         """
-        writes data to a .hdf5 defined by the -f parameter
+        writes data to a .h5 defined by the -f parameter
 
         Arguments:
         data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
@@ -565,7 +566,7 @@ class MyPingPong(object):
         fail: a 2D array containing information on how many times a rank has failed a test
         """
 
-        f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
+        f = h5py.File('%s.h5' % self.fn, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
@@ -599,12 +600,10 @@ if __name__ == '__main__':
 
     m = MyPingPong(go.log)
 
-    try:
-        fn = os.path.join(os.environ['VSC_SCRATCH'], go.options.output)
-    except KeyError as err:
-        go.log.error("%s is not set", err)
+    if not os.path.exists(go.options.output)
+        go.log.error("could not set outputife: path to %s doesn't exist", go.options.output)
         sys.exit(3)
-    m.setfn(fn)
+    m.setfn(go.options.output)
 
     if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
@@ -616,4 +615,4 @@ if __name__ == '__main__':
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
 
-    go.log.info("data written to %s.hdf5", fn)
+    go.log.info("data written to %s.h5", fn)
