@@ -40,6 +40,7 @@ from vsc.utils.generaloption import simple_option
 import array
 import os
 import re
+import sys
 from itertools import permutations
 
 import h5py
