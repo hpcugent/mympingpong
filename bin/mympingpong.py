@@ -473,7 +473,7 @@ class MyPingPong(mympi):
             if (-1 in key) or (-2 in key):
                 fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
 
-        failed = True if n.count_nonzero(fail) > 0 else False
+        failed = n.count_nonzero(fail) > 0
 
         attrs = {
             'pairmode': self.pairmode,
@@ -493,7 +493,7 @@ class MyPingPong(mympi):
 
     def writehdf5(self, data, attributes, failed, fail):
         """
-        writes data to a .hdf5 defined by the -f parameter
+        writes data to a .hdf5 defined by the -f pam2hmpirun -S local -h 4 mympingpong -d -f run1 -m 4 -i 1000 -n 1000rameter
 
         Arguments:
         data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
