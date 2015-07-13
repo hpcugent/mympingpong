@@ -493,7 +493,7 @@ class MyPingPong(mympi):
 
     def writehdf5(self, data, attributes, failed, fail):
         """
-        writes data to a .hdf5 defined by the -f pam2hmpirun -S local -h 4 mympingpong -d -f run1 -m 4 -i 1000 -n 1000rameter
+        writes data to a .hdf5 defined by the -f parameter
 
         Arguments:
         data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
