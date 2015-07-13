@@ -36,14 +36,14 @@ import re
 import warnings
 from math import sqrt
 
+import h5py
 import matplotlib as mp
-import numpy as n
 import matplotlib.patches as patches
 import matplotlib.pyplot as ppl
 import matplotlib.cm as cm
+import numpy as n
 from matplotlib.colorbar import Colorbar, make_axes
 
-from vsc.mympingpong.mympi import mympi
 from vsc.utils.generaloption import simple_option
 
 
@@ -66,68 +66,28 @@ class PingPongAnalysis(object):
 
         self.cmap = None
 
-    def collect(self, ppdata):
-        """ 
-        Data in pingpong format
-        - list of dictionaries
-        - each disctionay with own rank/hostname
-        -- pairs : coordinates
-        -- data : data
-        """
-        self.log.debug("collect ppdata %s" % ppdata)
+    def collecthdf5(self, fn):
+        """collects metatags, failures, counters and timingdata from fn.hdf5"""
 
-        shortname = True
+        f = h5py.File('%s.hdf5' % fn, 'r')
 
-        meta = {}
-        for m in self.metatags:
-            try:
-                meta[m] = ppdata[0][m]
-            except:
-                meta[m] = 'UNKNOWN'
+        self.meta = dict(f.attrs.items())
+        self.log.debug("collect meta: %s" % self.meta)     
 
-        meta['domain'] = '.'.join(ppdata[0]['name'].split('.')[1:])
-        size = meta['totalranks']
+        self.fail = f['fail'][:]
+        self.log.debug("collect fail: %s" % self.fail)
 
-        data = n.zeros((size, size), float)
-        count = n.zeros((size, size), float)
-        fail = n.zeros((size, 1), float)
-        nodemap = ['']*size
-        for el in ppdata:
-            if shortname:
-                nodemap[el['myrank']] = el['name'].split('.')[0]
-            else:
-                nodemap[el['myrank']] = el['name']
+        #http://stackoverflow.com/a/118508
+        self.count = f['data'][...,0] 
+        self.log.debug("collect count: %s" % self.count)
 
-            for key, val in el['data'].iteritems():
-                self.log.debug("found data: key: %s, val: %s", key, val)
-                
-                if (-1 in key) or (-2 in key):
-                    self.log.debug("No valid data for pair %s", key)
-                    fail[key[n.where(key > -1)[0][0]]] += 1
-                    continue
-                x, y = key
-                count[x][y] += val[0]
-                data[x][y] += val[1]
-
-        # transform into array
-        nodemap = n.array(nodemap)
-        meta['uniquenodes'] = n.unique(nodemap).size
-
-        # renormalise
+        data = f['data'][...,1]
         data = data*self.scaling
-        data = data/n.where(count == 0, 1, count)
-        # get rid of Nan?
-
+        data = data/n.where(self.count == 0, 1, self.count)
         self.data = data
-        self.log.debug("collect data:\n%s" % data)
-        self.count = count
-        self.log.debug("collect count:\n%s" % count)
-        self.fail = fail
-        self.log.debug("collect fail:\n%s" % fail)
-        self.nodemap = nodemap
-        self.log.debug("collect nodemap:\n%s" % nodemap)
-        self.meta = meta
-        self.log.debug("collect meta:\n%s" % meta)
+        self.log.debug("collect data: %s" % data)
+
+        f.close()
 
     def addtext(self, meta, sub, fig):
         self.log.debug("addtext")
@@ -141,7 +101,7 @@ class PingPongAnalysis(object):
         top = bottom + height
 
         cols = 3
-        tags = self.metatags
+        tags = self.meta.keys()
         nrmeta = len(tags)
         if nrmeta % cols == 1:
             nrmeta += 1
@@ -294,13 +254,6 @@ if __name__ == '__main__':
     }
 
     go = simple_option(options)
-
-    m = mympi(nolog=False, serial=True)
-
-    m.setfn(go.options.input)
-    data = m.read()
-    # print data
-
     ppa = PingPongAnalysis(go.log)
-    ppa.collect(data)
+    ppa.collecthdf5(go.options.input)
     ppa.plot()

@@ -37,19 +37,19 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import copy
-import cPickle
 import math
 import os
 import re
 import sys
 from itertools import permutations
 
+import h5py
 import numpy as n
 from lxml import etree
 from mpi4py.MPI import Wtime as wtime
 
-from vsc.mympingpong.mympi import mympi, getshared
 import vsc.mympingpong.pairs as pairs
+from vsc.mympingpong.mympi import mympi, getshared
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
 from vsc.utils.missing import get_subclasses
@@ -99,7 +99,6 @@ class PingPongSR(object):
     def pingpongfactory(pptype, comm, p, log):
         """a factory for creating PingPong objects"""
 
-        log.debug("in pingpongfactory with pptype: %s", pptype)
         for cls in get_subclasses(PingPongSR, include_base_class=True):
             if "PingPong%s" % pptype == cls.__name__:
                 return cls(comm, p, log)
@@ -387,7 +386,7 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True):
+    def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -399,7 +398,7 @@ class MyPingPong(mympi):
         barrier: if true, wait until every action in a set is finished before starting the next set
 
         Returns:
-        nothing, but will write a dict to a file defined by the -f parameter.
+        nothing, but will the following to writehdf5(): 
 
         myrank: MPI jobrank of the task
         nr_tests: number of pairs made, given by the -n argument
@@ -411,14 +410,11 @@ class MyPingPong(mympi):
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
-        data: a dict that maps a pair to its amount of tests done and the sum of the timing of these tests
+
+        data: a dict that maps a pair to the amount of times it has been tested and the sum of its test timings
+        
+        fail: an array that contains how many times rank $index has failed a test
         """
-
-        # highest precision mode till now. has 25 internal grouped tests
-        pmode = 'fast2'
-        barrier2 = False
-
-        dattosend = self.makedata(l=msgsize)
 
         if not nr:
             nr = int(self.size/2)+1
@@ -431,26 +427,15 @@ class MyPingPong(mympi):
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
  
         cpumap = self.makemap()
-        if self.master:
-            self.log.info("runpingpong: making map finished")
-
-        res = {
-            'myrank': self.rank,
-            'nr_tests': nr,
-            'totalranks': self.size,
-            'name': self.name,
-            'msgsize': msgsize,
-            'iter': it,
-            'pairmode': self.pairmode,
-        }
 
         try:
-            pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, rng=self.size, pairid=self.rank, logger=self.log)
+            pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, 
+                                    rng=self.size, pairid=self.rank, logger=self.log)
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
-
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
         pair.setnr(nr)
+        mypairs = pair.makepairs()
 
         if nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
@@ -462,37 +447,66 @@ class MyPingPong(mympi):
         else:
             data = dict()
             self.log.debug("created an empty datadict")
-
-        mypairs = pair.makepairs()
-        if self.master:
-            self.log.info("runpingpong: making pairs finished")
+        fail = n.zeros((self.size, 1), float)
 
         # introduce barrier
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
 
+        dattosend = self.makedata(l=msgsize)
         for runid, pair in enumerate(mypairs):
             if barrier:
                 self.log.debug("runpingpong barrier before pingpong")
                 self.comm.barrier()
 
-            timing, pmodedetails = self.pingpong(pair[0], pair[1], pmode, dattosend, it=it)
+            timing, pmodedetails = self.pingpong(pair[0], pair[1], dat=dattosend, it=it)
 
             if barrier2:
                 self.log.debug("runpingpong barrier after pingpong")
                 self.comm.barrier()
 
             key = tuple(pair)
-            self.log.debug("attempting to add to data: key: %s, timing: %s", key, timing)
-            count, old_timing = data.get(key, (0, 0))
-            data[key] = (count + 1, old_timing + timing)
-  
-        res['data'] = data
+            try:
+                count, old_timing = data.get(key, (0, 0))
+                data[key] = (count + 1, old_timing + timing)
+            except KeyError as err:
+                self.log.error("pair %s is not in permutation", key)
+                if (-1 in key) or (-2 in key):
+                    fail[key[n.where(key > -1)[0][0]]] += 1
 
-        # add the details
-        res.update(pmodedetails)
+        attrs = {
+            'pairmode': self.pairmode,
+            'totalranks': self.size,
+            'name': self.name,
+            'nr_tests': nr,
+            'msgsize': msgsize,
+            'iter': it,
+        }
+        attrs.update(pmodedetails)
 
-        self.write(res)
+        self.writehdf5(data, attrs, fail)  
+
+    def writehdf5(self, data, attributes, fail):
+        """writes data to a .hdf5 defined by the -f parameter"""
+
+        self.log.debug("wrting data to hdf5: %s", data)
+        f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
+
+        for k,v in attributes.items():
+            f.attrs[k] = v
+            self.log.debug("added attribute %s: %s to data.attrs", k, v)
+
+        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
+        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
+            if sendrank != self.rank:
+                # we only use the timingdata if the current rank is the sender
+                continue
+            self.log.debug("dataset ind: %s, key: %s, val: %s", ind, (sendrank,recvrank), val)
+            dataset[sendrank,recvrank] = tuple(val)
+
+        failset = f.create_dataset('fail', (1,self.size), data=fail)
+
+        f.close()
 
     def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
         """
@@ -513,11 +527,6 @@ class MyPingPong(mympi):
         details: a dictionary with the pp.group, pp.number and pp.builtindummyfirst
         """
 
-        details = {
-            'ppmode': pmode,
-            'ppgroup': None,
-            'ppiterations': None,
-        }
 
         if not dat:
             dat = self.makedata()
@@ -548,18 +557,14 @@ class MyPingPong(mympi):
             self.log.debug("pingpong: dummy first")
             pp.dopingpong(1)
 
-        if self.master:
-            self.log.info("runpingpong: starting dopingpong")
         timing = float(pp.dopingpong(it))
-        if self.master:
-            self.log.info("runpingpong: end dopingpong")
-
         self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
 
-        details.update({
+        details = {
+            'ppmode': pmode,
             'ppgroup': pp.group,
             'ppiterations': pp.it,
-        })
+        }
 
         return timing, details
 
@@ -594,3 +599,5 @@ if __name__ == '__main__':
         m.setpairmode(pairmode=go.options.groupmode)
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
+
+    go.log.info("data written to %s.hdf5", fn)
