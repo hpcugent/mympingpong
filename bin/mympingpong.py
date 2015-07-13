@@ -592,7 +592,7 @@ if __name__ == '__main__':
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
-        'output': ('set the outputdirectory. a fille will be written in format PPsize-it-nr.h5', str, 'store', 'test2', 'f'),
+        'output': ('set the outputdirectory. a file will be written in format PPsize-it-nr.h5', str, 'store', 'test2', 'f'),
         'seed': ('set the seed', int, 'store', 2, 's'),    
     }
 
