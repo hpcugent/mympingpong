@@ -36,6 +36,7 @@ TODO:
 # this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
 
+import array
 import copy
 import math
 import os
@@ -46,29 +47,16 @@ from itertools import permutations
 import h5py
 import numpy as n
 from lxml import etree
-from mpi4py.MPI import Wtime as wtime
+from mpi4py import MPI
 
-import vsc.mympingpong.pairs as pairs
-from vsc.mympingpong.mympi import mympi, getshared
+import vsc.mympingpong.pairs
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
 from vsc.utils.missing import get_subclasses
 
-from logging import getLogger
-
 
 class PingPongSR(object):
-
     """standard pingpong"""
-    """
-    Define real work
-    - no status check
-    - no receiving obj check 
-
-    when using the high level recv/send, this slows things down 
-    - objects need to be pickled, more data is send too
-
-    """
 
     def __init__(self, comm, other, logger):
 
@@ -126,10 +114,10 @@ class PingPongSR(object):
             self.setit(it)
 
         for x in xrange(self.it):
-            self.start[x] = wtime()
+            self.start[x] = MPI.Wtime()
             self.run1(self.sndbuf, self.other, self.tag1)
             self.run2(self.rcvbuf, self.other, self.tag2)
-            self.end[x] = wtime()
+            self.end[x] = MPI.Wtime()
 
         avg = n.average((self.end-self.start)/(2.0*group))
 
@@ -249,19 +237,43 @@ class PingPongtest(PingPongSR):
 
     def dopingpong(it):
         for x in xrange(it):
-            self.start[x] = wtime()
-            self.end[x] = wtime()
+            self.start[x] = MPI.Wtime()
+            self.end[x] = MPI.Wtime()
         return self.start, self.end
 
 
-class MyPingPong(mympi):
+class MyPingPong(object):
 
     def __init__(self, logger):
-        mympi.__init__(self, nolog=False, serial=False)
         self.log = logger
+
         self.rngfilter = None
         self.mapfilter = None
         self.pairmode = None
+
+        self.fn = None
+
+        self.comm = MPI.COMM_WORLD
+        self.name = MPI.Get_processor_name()
+        self.size = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
+
+    def setfn(self, fn, remove=True):
+        self.fn = fn
+        if remove and os.path.exists(self.fn):
+            try:
+                MPI.File.Delete(fn)
+            except Exception as err:
+                self.log.error("Failed to delete file %s: %s" % (fn, err))
+
+    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
+        self.pairmode = pairmode
+        self.rngfilter = rngfilter
+        self.mapfilter = mapfilter
+        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
+
+    def makedata(self, l=1024L):
+        return array.array('c', '\0'*l)
 
     def getprocinfo(self):
         """
@@ -355,7 +367,6 @@ class MyPingPong(mympi):
 
         return res
 
-
     def makemap(self):
         """
         returns the internal structure of the machine
@@ -380,13 +391,7 @@ class MyPingPong(mympi):
         self.log.debug("makemap result: %s", res)
         return res
 
-    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
-        self.pairmode = pairmode
-        self.rngfilter = rngfilter
-        self.mapfilter = mapfilter
-        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
-
-    def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
+    def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -422,7 +427,7 @@ class MyPingPong(mympi):
         if not self.pairmode:
             self.pairmode = 'shuffle'
         if type(seed) == int:
-            self.setseed(seed)
+            self.seed = seed
         elif self.pairmode in ['shuffle']:
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
  
@@ -491,36 +496,6 @@ class MyPingPong(mympi):
         self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
-    def writehdf5(self, data, attributes, failed, fail):
-        """
-        writes data to a .hdf5 defined by the -f parameter
-
-        Arguments:
-        data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
-        attrs: a dict containing the attributes of the test
-        failed: a boolean that is False if there were no fails during testing
-        fail: a 2D array containing information on how many times a rank has failed a test
-        """
-
-        f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
-
-        for k,v in attributes.items():
-            f.attrs[k] = v
-            self.log.debug("added attribute %s: %s to data.attrs", k, v)
-
-        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
-        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
-            if sendrank != self.rank:
-                # we only use the timingdata if the current rank is the sender
-                continue
-            dataset[sendrank,recvrank] = tuple(val)
-
-        if failed:
-            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
-            failset[self.rank] = fail[self.rank]
-
-        f.close()
-
     def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
         """
         Pingpong between pairs
@@ -570,7 +545,7 @@ class MyPingPong(mympi):
             pp.dopingpong(1)
 
         timing = float(pp.dopingpong(it))
-        self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
+        self.log.debug("%s->%s: %s", p1, p2, timing)
 
         details = {
             'ppgroup': pp.group,
@@ -578,6 +553,36 @@ class MyPingPong(mympi):
         }
 
         return timing, details
+
+    def writehdf5(self, data, attributes, failed, fail):
+        """
+        writes data to a .hdf5 defined by the -f parameter
+
+        Arguments:
+        data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
+        attrs: a dict containing the attributes of the test
+        failed: a boolean that is False if there were no fails during testing
+        fail: a 2D array containing information on how many times a rank has failed a test
+        """
+
+        f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
+
+        for k,v in attributes.items():
+            f.attrs[k] = v
+            self.log.debug("added attribute %s: %s to data.attrs", k, v)
+
+        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
+        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
+            if sendrank != self.rank:
+                # we only use the timingdata if the current rank is the sender
+                continue
+            dataset[sendrank,recvrank] = tuple(val)
+
+        if failed:
+            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
+            failset[self.rank] = fail[self.rank]
+
+        f.close()
 
 if __name__ == '__main__':
 
@@ -595,7 +600,7 @@ if __name__ == '__main__':
     m = MyPingPong(go.log)
 
     try:
-        fn = os.path.join(getshared(), go.options.output)
+        fn = os.path.join(os.environ['VSC_SCRATCH'], go.options.output)
     except KeyError as err:
         go.log.error("%s is not set", err)
         sys.exit(3)
