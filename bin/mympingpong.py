@@ -600,8 +600,8 @@ if __name__ == '__main__':
 
     m = MyPingPong(go.log)
 
-    if not os.path.exists(go.options.output):
-        go.log.error("could not set outputfile: path to %s doesn't exist", go.options.output)
+    if not os.path.isdir(go.options.output):
+        go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
     m.setfn(go.options.output)
 
