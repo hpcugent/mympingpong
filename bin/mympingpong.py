@@ -566,7 +566,7 @@ class MyPingPong(object):
         fail: a 2D array containing information on how many times a rank has failed a test
         """
 
-        f = h5py.File('%s.h5' % self.fn, 'w', driver='mpio', comm=self.comm)
+        f = h5py.File('%s/PPsize%s-it%s-nr%s.h5' % (self.fn,self.size,attributes['iter'],attributes['nr_tests']), 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
@@ -592,7 +592,7 @@ if __name__ == '__main__':
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
-        'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+        'output': ('set the outputdirectory. a fille will be written in format PPsize-it-nr.h5', str, 'store', 'test2', 'f'),
         'seed': ('set the seed', int, 'store', 2, 's'),    
     }
 
@@ -600,8 +600,8 @@ if __name__ == '__main__':
 
     m = MyPingPong(go.log)
 
-    if not os.path.exists(go.options.output)
-        go.log.error("could not set outputife: path to %s doesn't exist", go.options.output)
+    if not os.path.exists(go.options.output):
+        go.log.error("could not set outputfile: path to %s doesn't exist", go.options.output)
         sys.exit(3)
     m.setfn(go.options.output)
 
@@ -615,4 +615,4 @@ if __name__ == '__main__':
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
 
-    go.log.info("data written to %s.h5", fn)
+    go.log.info("data written to %s", go.options.output)
