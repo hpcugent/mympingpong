@@ -386,6 +386,10 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
+    def getpingpongmode():
+
+        return pp
+
     def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
@@ -484,8 +488,10 @@ class MyPingPong(mympi):
             'iter': it,
             'pingpongmode' : pmode
         }
-        #attrs.update(pmodedetails)
+        if not failed:
+            attrs.update(pmodedetails)
 
+        self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
     def writehdf5(self, data, attributes, failed, fail):
@@ -530,7 +536,6 @@ class MyPingPong(mympi):
         timing: a list wich contains an average time, a starttime and an endtime
         details: a dictionary with the pp.group, pp.number and pp.builtindummyfirst
         """
-
 
         if not dat:
             dat = self.makedata()
