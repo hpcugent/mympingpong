@@ -386,10 +386,6 @@ class MyPingPong(mympi):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def getpingpongmode():
-
-        return pp
-
     def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
@@ -417,7 +413,7 @@ class MyPingPong(mympi):
 
         data: a dict that maps a pair to the amount of times it has been tested and the sum of its test timings
         
-        fail: an array that contains how many times rank $index has failed a test
+        fail: a 2D array that contains information on how many times a rank has failed a test
         """
 
         if not nr:
@@ -486,7 +482,8 @@ class MyPingPong(mympi):
             'nr_tests': nr,
             'msgsize': msgsize,
             'iter': it,
-            'pingpongmode' : pmode
+            'pingpongmode' : pmode,
+            'failed' : failed,
         }
         if not failed:
             attrs.update(pmodedetails)
@@ -495,9 +492,16 @@ class MyPingPong(mympi):
         self.writehdf5(data, attrs, failed, fail)  
 
     def writehdf5(self, data, attributes, failed, fail):
-        """writes data to a .hdf5 defined by the -f parameter"""
+        """
+        writes data to a .hdf5 defined by the -f parameter
 
-        self.log.debug("wrting data to hdf5: %s", data)
+        Arguments:
+        data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
+        attrs: a dict containing the attributes of the test
+        failed: a boolean that is False if there were no fails during testing
+        fail: a 2D array containing information on how many times a rank has failed a test
+        """
+
         f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
@@ -512,7 +516,6 @@ class MyPingPong(mympi):
             dataset[sendrank,recvrank] = tuple(val)
 
         if failed:
-            self.log.debug("failed")
             failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
             failset[self.rank] = fail[self.rank]
 
@@ -570,7 +573,6 @@ class MyPingPong(mympi):
         self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
 
         details = {
-            'ppmode': pmode,
             'ppgroup': pp.group,
             'ppiterations': pp.it,
         }

@@ -74,8 +74,9 @@ class PingPongAnalysis(object):
         self.meta = dict(f.attrs.items())
         self.log.debug("collect meta: %s" % self.meta)     
 
-        self.fail = f['fail'][:]
-        self.log.debug("collect fail: %s" % self.fail)
+        if self.meta['failed']:
+            self.fail = f['fail'][:]
+            self.log.debug("collect fail: %s" % self.fail)
 
         #http://stackoverflow.com/a/118508
         self.count = f['data'][...,0] 
