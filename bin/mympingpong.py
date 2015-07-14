@@ -182,12 +182,7 @@ class MyPingPong(object):
 
         return res
 
-<<<<<<< HEAD
-    def makemap(self):
-=======
-
     def makecpumap(self):
->>>>>>> removed dict usage in makemap
         """
         returns the internal structure of the machine
 
