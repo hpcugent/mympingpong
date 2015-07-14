@@ -128,8 +128,6 @@ class PingPongAnalysis(object):
         self.log.debug("adddata")
 
         vmin = n.min(data[(data > 1/self.scaling).nonzero()])
-        self.log.debug("ltencymin: %s", latencymin)
-        self.log.debug("ltencymax: %s", latencymax)
         if latencymin < vmin:
             vmin = latencymin
 
