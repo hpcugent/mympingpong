@@ -50,7 +50,7 @@ import numpy as n
 from lxml import etree
 from mpi4py import MPI
 
-import vsc.mympingpong.pingpongers as ppers
+from vsc.mympingpong.pingpongers import PingPongSR
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
 
@@ -72,7 +72,7 @@ class MyPingPong(object):
         self.rank = self.comm.Get_rank()
 
     def setfn(self, directory, it, nr, msg, remove=True):
-        timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%d%m%y-%H%M')
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg,nr, it, timestamp)
         if remove and os.path.exists(self.fn):
             try:
@@ -344,11 +344,11 @@ class MyPingPong(object):
             return -1, {}
 
         if test:
-            pp = ppers.PingPongSR.pingpongfactory('test')
+            pp = PingPongSR.pingpongfactory('test')
         elif self.rank == p1:
-            pp = ppers.PingPongSR.pingpongfactory('SR' + pmode, self.comm, p2, self.log)
+            pp = PingPongSR.pingpongfactory('SR' + pmode, self.comm, p2, self.log)
         elif self.rank == p2:
-            pp = ppers.PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
+            pp = PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
         else:
             self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
             return -1, {}
