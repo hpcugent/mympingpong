@@ -56,8 +56,6 @@ class PingPongAnalysis(object):
         # use multiplication of 10e6 (ie microsec)
         self.scaling = 1e6
 
-        self.metatags = ['totalranks', 'msgsize', 'nr_tests', 'iter',
-                         'uniquenodes', 'pairmode', 'ppmode', 'ppgroup', 'ppiterations']
         self.meta = None
 
         self.cmap = None

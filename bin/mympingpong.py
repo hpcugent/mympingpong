@@ -201,7 +201,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
+    def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, maxruntime=0, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -225,6 +225,7 @@ class MyPingPong(object):
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
+        timing: the total runtime of pingpong (does not include setup)
 
         data: a dict that maps a pair to the amount of times it has been tested and the sum of its test timings
         
@@ -267,10 +268,15 @@ class MyPingPong(object):
         # introduce barrier
         self.comm.barrier()
         self.log.debug("runpingpong: barrier before real start (map + pairs done)")
+        start = time.time()
 
         pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
         for runid, pair in enumerate(mypairs):
+            if maxruntime and (time.time() - start) > maxruntime:
+                self.log.info("Maximum runtime %s reached", maxruntime)
+                break
+
             if barrier:
                 self.comm.barrier()
 
@@ -289,6 +295,7 @@ class MyPingPong(object):
                 fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
 
         failed = n.count_nonzero(fail) > 0
+        timing = round((time.time() - start))
 
         attrs = {
             'pairmode': self.pairmode,
@@ -299,7 +306,9 @@ class MyPingPong(object):
             'iter': it,
             'pingpongmode' : pmode,
             'failed' : failed,
+            'timing' : timing,
         }
+
         if not failed:
             attrs.update(pmodedetails)
 
@@ -403,7 +412,8 @@ if __name__ == '__main__':
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
         'output': ('set the outputdirectory. a file will be written in format \
             PP<name>-<worldssize>-msg<msgsize>-nr<number>-it<iterations>-<ddmmyy-hhmm>.h5', str, 'store', 'test2', 'f'),
-        'seed': ('set the seed', int, 'store', 2, 's'),    
+        'seed': ('set the seed', int, 'store', 2, 's'),
+        'maxruntime': ('set the maximum runtime of pingpong in seconds', int, 'store', 0, 't'),
     }
 
     go = simple_option(options)
@@ -423,6 +433,6 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
+    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", go.options.output)
