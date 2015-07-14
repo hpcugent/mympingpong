@@ -30,6 +30,7 @@
 Generate plots from output from mympingpong.py
 """
 
+import sys
 import warnings
 from math import sqrt
 
@@ -123,10 +124,18 @@ class PingPongAnalysis(object):
         cb = fig.colorbar(cax)
         # cb.set_label('units')
 
-    def adddata(self, data, sub, fig):
+    def adddata(self, data, sub, fig, latencymin, latencymax):
         self.log.debug("adddata")
+
         vmin = n.min(data[(data > 1/self.scaling).nonzero()])
+        self.log.debug("ltencymin: %s", latencymin)
+        self.log.debug("ltencymax: %s", latencymax)
+        if latencymin < vmin:
+            vmin = latencymin
+
         vmax = n.max(data[(data < 1.0*self.scaling).nonzero()])
+        if latencymax > vmax:
+            vmax = latencymax
 
         self.log.debug("adddata: normalize vmin %s vmax %s" % (vmin, vmax))
 
@@ -179,7 +188,7 @@ class PingPongAnalysis(object):
 
         self.cmap = cmap
 
-    def plot(self, data=None, count=None, meta=None):
+    def plot(self, latencymin, latencymax, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
             data = self.data
@@ -227,7 +236,7 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        self.adddata(data, subdata, fig1)
+        self.adddata(data, subdata, fig1, latencymin, latencymax)
 
         histw = 0.7
         subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
@@ -246,9 +255,11 @@ if __name__ == '__main__':
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
+        'latencymin': ('set the minimum of the latency graph', float, 'store', sys.maxint, 'i'),
+        'latencymax': ('set the maximum of the latency graph', float, 'store', 0, 'a'),
     }
 
     go = simple_option(options)
     ppa = PingPongAnalysis(go.log)
     ppa.collecthdf5(go.options.input)
-    ppa.plot()
+    ppa.plot(latencymin=go.options.latencymin, latencymax=go.options.latencymax)
