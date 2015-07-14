@@ -26,6 +26,7 @@
 
 """
 @author: Stijn De Weirdt (Ghent University)
+@author: Jeroen De Clerck (Ghent University)
 
 Pingpong related classes and tests, based on mympi
 
@@ -37,8 +38,8 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import array
-import copy
-import math
+import time
+import datetime
 import os
 import re
 import sys
@@ -49,197 +50,9 @@ import numpy as n
 from lxml import etree
 from mpi4py import MPI
 
-import vsc.mympingpong.pairs
+import vsc.mympingpong.pingpongers as ppers
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
-from vsc.utils.missing import get_subclasses
-
-
-class PingPongSR(object):
-    """standard pingpong"""
-
-    def __init__(self, comm, other, logger):
-
-        self.log = logger
-
-        self.comm = comm
-
-        self.sndbuf = None
-        self.rcvbuf = None
-
-        self.other = other
-
-        self.tag1 = 123
-        self.tag2 = 234
-
-        self.groupforce = None
-        self.group = 0
-        self.builtindummyfirst = False
-
-        self.run1 = None
-        self.run2 = None
-
-        self.setsr()
-
-        self.setcomm()
-
-    @staticmethod
-    def pingpongfactory(pptype, comm, p, log):
-        """a factory for creating PingPong objects"""
-
-        for cls in get_subclasses(PingPongSR, include_base_class=True):
-            if "PingPong%s" % pptype == cls.__name__:
-                return cls(comm, p, log)
-        raise KeyError
-
-    def setsr(self):
-        self.send = self.comm.Send
-        self.recv = self.comm.Recv
-
-    def setcomm(self):
-        self.run1 = self.send
-        self.run2 = self.recv
-
-    def setdat(self, dat):
-        self.sndbuf = dat
-        self.rcvbuf = copy.deepcopy(self.sndbuf)
-
-    def setit(self, it):
-        self.it = it
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
-
-    def dopingpong(self, it=None):
-        if it:
-            self.setit(it)
-
-        for x in xrange(self.it):
-            self.start[x] = MPI.Wtime()
-            self.run1(self.sndbuf, self.other, self.tag1)
-            self.run2(self.rcvbuf, self.other, self.tag2)
-            self.end[x] = MPI.Wtime()
-
-        avg = n.average((self.end-self.start)/(2.0*group))
-
-        return avg
-
-
-class PingPongRS(PingPongSR):
-    """standard pingpong"""
-
-    def setcomm(self):
-        self.run1 = self.recv
-        self.run2 = self.send
-
-
-class PingPongSRfast(PingPongSR):
-
-    def setsr(self):
-        """set the send-recieve optimisation """
-        self.send = self.comm.PingpongSR
-        self.recv = self.comm.PingpongRS
-
-    def setcomm(self):
-        self.run1 = self.send
-
-    def setit(self, itall, group):
-        it = itall/group
-        self.group = group
-        self.it = itall
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
-
-    def dopingpong(self, it=None, group=50):
-        if self.groupforce:
-            group = self.groupforce
-
-        if it < group:
-            group = it
-            self.log.debug("dopingpong: number of iterations is set to group size")
-
-        if it is not None:
-            self.setit(it, group)
-        else:
-            self.log.debug("dopingpong: number of iterations is not set")
-
-        for x in xrange(it/group):
-            """
-            Comm.PingpongSR(self, 
-                            rbuf, sbuf, 
-                            int rsource=0, int sdest=0,  
-                            int rtag=0, int stag=0, 
-                            int num=1, 
-                            Status rstatus=None)
-            """
-            start, end = self.run1(self.rcvbuf, self.sndbuf,
-                                   self.other, self.other,
-                                   self.tag1, self.tag2,
-                                   group)
-            self.start[x] = start
-            self.end[x] = end
-
-        avg = n.average((self.end-self.start) / (2.0*group))
-
-        return avg
-
-
-class PingPongRSfast(PingPongSRfast):
-
-    def setcomm(self):
-        self.run1 = self.recv
-        # flip tags
-        a = self.tag2
-        self.tag2 = self.tag1
-        self.tag1 = a
-
-
-class PingPongSRU10(PingPongSRfast):
-    """send-receive optimized for pingponging 10 times"""
-
-    def setsr(self):
-        self.groupforce = 10
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSRU10
-        self.recv = self.comm.PingpongRSU10
-
-
-class PingPongRSU10(PingPongRSfast):
-    """receive-send optimized for pingponging 10 times"""
-
-    def setsr(self):
-        self.groupforce = 10
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSRU10
-        self.recv = self.comm.PingpongRSU10
-
-
-class PingPongSRfast2(PingPongSRfast):
-    """send-receive optimized for pingponging 25 times in a for loop"""
-
-    def setsr(self):
-        self.groupforce = 25
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSR25
-        self.recv = self.comm.PingpongRS25
-
-
-class PingPongRSfast2(PingPongRSfast):
-    """receive-send optimized for pingponging 25 times in a for loop"""
-
-    def setsr(self):
-        self.groupforce = 25
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSR25
-        self.recv = self.comm.PingpongRS25
-
-
-class PingPongtest(PingPongSR):
-
-    def dopingpong(it):
-        for x in xrange(it):
-            self.start[x] = MPI.Wtime()
-            self.end[x] = MPI.Wtime()
-        return self.start, self.end
 
 
 class MyPingPong(object):
@@ -258,8 +71,9 @@ class MyPingPong(object):
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
-    def setfn(self, directory, it, nr, remove=True):
-        self.fn = '%s/PPsize%s-it%s-nr%s.h5' % (directory, self.size, it ,nr)
+    def setfn(self, directory, it, nr, msg, remove=True):
+        timestamp = datetime.datetime.fromtimestamp(time.time()).strftime('%d%m%y-%H%M')
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg,nr, it, timestamp)
         if remove and os.path.exists(self.fn):
             try:
                 MPI.File.Delete(self.fn)
@@ -530,11 +344,11 @@ class MyPingPong(object):
             return -1, {}
 
         if test:
-            pp = PingPongSR.pingpongfactory('test')
+            pp = ppers.PingPongSR.pingpongfactory('test')
         elif self.rank == p1:
-            pp = PingPongSR.pingpongfactory('SR' + pmode, self.comm, p2, self.log)
+            pp = ppers.PingPongSR.pingpongfactory('SR' + pmode, self.comm, p2, self.log)
         elif self.rank == p2:
-            pp = PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
+            pp = ppers.PingPongSR.pingpongfactory('RS' + pmode, self.comm, p1, self.log)
         else:
             self.log.debug("pingpong: do nothing myrank %s p1 %s p2 %s pmode %s", self.rank, p1, p2, pmode)
             return -1, {}
@@ -592,7 +406,8 @@ if __name__ == '__main__':
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
-        'output': ('set the outputdirectory. a file will be written in format PPsize-it-nr.h5', str, 'store', 'test2', 'f'),
+        'output': ('set the outputdirectory. a file will be written in format \
+            PP<name>-<worldssize>-msg<msgsize>-nr<number>-it<iterations>-<ddmmyy-hhmm>.h5', str, 'store', 'test2', 'f'),
         'seed': ('set the seed', int, 'store', 2, 's'),    
     }
 
@@ -603,7 +418,7 @@ if __name__ == '__main__':
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(go.options.output, go.options.iterations, go.options.number)
+    m.setfn(go.options.output, go.options.iterations, go.options.number, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
