@@ -38,11 +38,8 @@ TODO:
 from vsc.utils.generaloption import simple_option
 
 import array
-<<<<<<< HEAD
 import time
 import datetime
-=======
->>>>>>> split off pingpongers + cleaned imports
 import os
 import re
 import sys
