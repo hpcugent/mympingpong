@@ -221,7 +221,8 @@ class MyPingPong(object):
         name: the MPI processor name
         msgsize: the size of a message that is being sent between pairs, given by the -m argument
         iter: the amount of iterations, given by the -i argument
-        pairmode: the way that pairs are generated (randomly or 'smart'), partially given by the -g argument (defaulf shuffle)
+        pairmode: the way that pairs are generated (randomly or 'smart'), 
+                  partially given by the -g argument (defaulf shuffle)
         ppmode: which pingpongmode is being used
         ppgroup: pingpongs can be bundled in groups, this is the size of those groups
         ppiterations: duplicate of iter
@@ -433,6 +434,7 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number, maxruntime=go.options.maxruntime)
+    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, 
+                  it=go.options.iterations, nr=go.options.number, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", go.options.output)

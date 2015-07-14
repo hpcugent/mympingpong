@@ -253,8 +253,8 @@ if __name__ == '__main__':
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
-        'latencymin': ('set the minimum of the latency graph', float, 'store', sys.maxint, 'i'),
-        'latencymax': ('set the maximum of the latency graph', float, 'store', 0, 'a'),
+        'latencymin': ('set the minimum of the latency graph', float, 'store', sys.maxint, 'm'),
+        'latencymax': ('set the maximum of the latency graph', float, 'store', 0, 'M'),
     }
 
     go = simple_option(options)
