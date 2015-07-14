@@ -182,7 +182,7 @@ class MyPingPong(object):
 
         return res
 
-    def makemap(self):
+    def makecpumap(self):
         """
         returns the internal structure of the machine
 
@@ -199,12 +199,7 @@ class MyPingPong(object):
         mymap = [myinfo] * self.size
         alltoall = self.comm.alltoall(mymap)
         self.log.debug("Received map %s", alltoall)
-
-        res = {}
-        for x in xrange(self.size):
-            res[x] = alltoall[x]
-        self.log.debug("makemap result: %s", res)
-        return res
+        return alltoall
 
     def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
@@ -246,7 +241,7 @@ class MyPingPong(object):
         elif self.pairmode in ['shuffle']:
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
  
-        cpumap = self.makemap()
+        cpumap = self.makecpumap()
 
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, 

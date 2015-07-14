@@ -157,14 +157,14 @@ class Pair(object):
 
         # Reverse map
         self.revmap = {}
-        for k, l in self.cpumap.items():
+        for ind, l in enumerate(self.cpumap):
             for p in l:
                 if not self.revmap.has_key(p):
                     self.revmap[p] = []
-                if k in self.revmap[p]:
+                if ind in self.revmap[p]:
                     self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
                 else:
-                    self.revmap[p].append(k)
+                    self.revmap[p].append(ind)
         self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
