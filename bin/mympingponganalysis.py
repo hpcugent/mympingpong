@@ -30,15 +30,11 @@
 Generate plots from output from mympingpong.py
 """
 
-import sys
-import os
-import re
 import warnings
 from math import sqrt
 
 import h5py
 import matplotlib as mp
-import matplotlib.patches as patches
 import matplotlib.pyplot as ppl
 import matplotlib.cm as cm
 import numpy as n
@@ -69,7 +65,7 @@ class PingPongAnalysis(object):
     def collecthdf5(self, fn):
         """collects metatags, failures, counters and timingdata from fn.hdf5"""
 
-        f = h5py.File('%s.hdf5' % fn, 'r')
+        f = h5py.File(fn, 'r')
 
         self.meta = dict(f.attrs.items())
         self.log.debug("collect meta: %s" % self.meta)     
