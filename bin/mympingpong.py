@@ -26,6 +26,7 @@
 
 """
 @author: Stijn De Weirdt (Ghent University)
+@author: Jeroen De Clerck (Ghent University)
 
 Pingpong related classes and tests, based on mympi
 
@@ -36,8 +37,9 @@ TODO:
 # this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
 
-import copy
-import math
+import array
+import time
+import datetime
 import os
 import re
 import sys
@@ -46,222 +48,47 @@ from itertools import permutations
 import h5py
 import numpy as n
 from lxml import etree
-from mpi4py.MPI import Wtime as wtime
+from mpi4py import MPI
 
-import vsc.mympingpong.pairs as pairs
-from vsc.mympingpong.mympi import mympi, getshared
+from vsc.mympingpong.pingpongers import PingPongSR
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
-from vsc.utils.missing import get_subclasses
-
-from logging import getLogger
 
 
-class PingPongSR(object):
-
-    """standard pingpong"""
-    """
-    Define real work
-    - no status check
-    - no receiving obj check 
-
-    when using the high level recv/send, this slows things down 
-    - objects need to be pickled, more data is send too
-
-    """
-
-    def __init__(self, comm, other, logger):
-
-        self.log = logger
-
-        self.comm = comm
-
-        self.sndbuf = None
-        self.rcvbuf = None
-
-        self.other = other
-
-        self.tag1 = 123
-        self.tag2 = 234
-
-        self.groupforce = None
-        self.group = 0
-        self.builtindummyfirst = False
-
-        self.run1 = None
-        self.run2 = None
-
-        self.setsr()
-
-        self.setcomm()
-
-    @staticmethod
-    def pingpongfactory(pptype, comm, p, log):
-        """a factory for creating PingPong objects"""
-
-        for cls in get_subclasses(PingPongSR, include_base_class=True):
-            if "PingPong%s" % pptype == cls.__name__:
-                return cls(comm, p, log)
-        raise KeyError
-
-    def setsr(self):
-        self.send = self.comm.Send
-        self.recv = self.comm.Recv
-
-    def setcomm(self):
-        self.run1 = self.send
-        self.run2 = self.recv
-
-    def setdat(self, dat):
-        self.sndbuf = dat
-        self.rcvbuf = copy.deepcopy(self.sndbuf)
-
-    def setit(self, it):
-        self.it = it
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
-
-    def dopingpong(self, it=None):
-        if it:
-            self.setit(it)
-
-        for x in xrange(self.it):
-            self.start[x] = wtime()
-            self.run1(self.sndbuf, self.other, self.tag1)
-            self.run2(self.rcvbuf, self.other, self.tag2)
-            self.end[x] = wtime()
-
-        avg = n.average((self.end-self.start)/(2.0*group))
-
-        return avg
-
-
-class PingPongRS(PingPongSR):
-    """standard pingpong"""
-
-    def setcomm(self):
-        self.run1 = self.recv
-        self.run2 = self.send
-
-
-class PingPongSRfast(PingPongSR):
-
-    def setsr(self):
-        """set the send-recieve optimisation """
-        self.send = self.comm.PingpongSR
-        self.recv = self.comm.PingpongRS
-
-    def setcomm(self):
-        self.run1 = self.send
-
-    def setit(self, itall, group):
-        it = itall/group
-        self.group = group
-        self.it = itall
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
-
-    def dopingpong(self, it=None, group=50):
-        if self.groupforce:
-            group = self.groupforce
-
-        if it < group:
-            group = it
-            self.log.debug("dopingpong: number of iterations is set to group size")
-
-        if it is not None:
-            self.setit(it, group)
-        else:
-            self.log.debug("dopingpong: number of iterations is not set")
-
-        for x in xrange(it/group):
-            """
-            Comm.PingpongSR(self, 
-                            rbuf, sbuf, 
-                            int rsource=0, int sdest=0,  
-                            int rtag=0, int stag=0, 
-                            int num=1, 
-                            Status rstatus=None)
-            """
-            start, end = self.run1(self.rcvbuf, self.sndbuf,
-                                   self.other, self.other,
-                                   self.tag1, self.tag2,
-                                   group)
-            self.start[x] = start
-            self.end[x] = end
-
-        avg = n.average((self.end-self.start) / (2.0*group))
-
-        return avg
-
-
-class PingPongRSfast(PingPongSRfast):
-
-    def setcomm(self):
-        self.run1 = self.recv
-        # flip tags
-        a = self.tag2
-        self.tag2 = self.tag1
-        self.tag1 = a
-
-
-class PingPongSRU10(PingPongSRfast):
-    """send-receive optimized for pingponging 10 times"""
-
-    def setsr(self):
-        self.groupforce = 10
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSRU10
-        self.recv = self.comm.PingpongRSU10
-
-
-class PingPongRSU10(PingPongRSfast):
-    """receive-send optimized for pingponging 10 times"""
-
-    def setsr(self):
-        self.groupforce = 10
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSRU10
-        self.recv = self.comm.PingpongRSU10
-
-
-class PingPongSRfast2(PingPongSRfast):
-    """send-receive optimized for pingponging 25 times in a for loop"""
-
-    def setsr(self):
-        self.groupforce = 25
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSR25
-        self.recv = self.comm.PingpongRS25
-
-
-class PingPongRSfast2(PingPongRSfast):
-    """receive-send optimized for pingponging 25 times in a for loop"""
-
-    def setsr(self):
-        self.groupforce = 25
-        self.builtindummyfirst = True
-        self.send = self.comm.PingpongSR25
-        self.recv = self.comm.PingpongRS25
-
-
-class PingPongtest(PingPongSR):
-
-    def dopingpong(it):
-        for x in xrange(it):
-            self.start[x] = wtime()
-            self.end[x] = wtime()
-        return self.start, self.end
-
-
-class MyPingPong(mympi):
+class MyPingPong(object):
 
     def __init__(self, logger):
-        mympi.__init__(self, nolog=False, serial=False)
         self.log = logger
+
         self.rngfilter = None
         self.mapfilter = None
         self.pairmode = None
+
+        self.fn = None
+
+        self.comm = MPI.COMM_WORLD
+        self.name = MPI.Get_processor_name()
+        self.size = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
+
+    def setfn(self, directory, it, nr, msg, remove=True):
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg,nr, it, timestamp)
+        if remove and os.path.exists(self.fn):
+            try:
+                MPI.File.Delete(self.fn)
+            except Exception as err:
+                self.log.error("Failed to delete file %s: %s" % (self.fn, err))
+
+    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
+        self.pairmode = pairmode
+        self.rngfilter = rngfilter
+        self.mapfilter = mapfilter
+        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
+
+    def makedata(self, l=1024L):
+        """create data with size l (in Bytes)"""
+        return array.array('c', '\0'*l)
 
     def getprocinfo(self):
         """
@@ -355,7 +182,6 @@ class MyPingPong(mympi):
 
         return res
 
-
     def makemap(self):
         """
         returns the internal structure of the machine
@@ -380,13 +206,7 @@ class MyPingPong(mympi):
         self.log.debug("makemap result: %s", res)
         return res
 
-    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
-        self.pairmode = pairmode
-        self.rngfilter = rngfilter
-        self.mapfilter = mapfilter
-        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
-
-    def runpingpong(self,seed=None, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
+    def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -422,7 +242,7 @@ class MyPingPong(mympi):
         if not self.pairmode:
             self.pairmode = 'shuffle'
         if type(seed) == int:
-            self.setseed(seed)
+            self.seed = seed
         elif self.pairmode in ['shuffle']:
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
  
@@ -491,36 +311,6 @@ class MyPingPong(mympi):
         self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
-    def writehdf5(self, data, attributes, failed, fail):
-        """
-        writes data to a .hdf5 defined by the -f parameter
-
-        Arguments:
-        data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
-        attrs: a dict containing the attributes of the test
-        failed: a boolean that is False if there were no fails during testing
-        fail: a 2D array containing information on how many times a rank has failed a test
-        """
-
-        f = h5py.File('%s.hdf5' % self.fn, 'w', driver='mpio', comm=self.comm)
-
-        for k,v in attributes.items():
-            f.attrs[k] = v
-            self.log.debug("added attribute %s: %s to data.attrs", k, v)
-
-        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
-        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
-            if sendrank != self.rank:
-                # we only use the timingdata if the current rank is the sender
-                continue
-            dataset[sendrank,recvrank] = tuple(val)
-
-        if failed:
-            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
-            failset[self.rank] = fail[self.rank]
-
-        f.close()
-
     def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
         """
         Pingpong between pairs
@@ -570,7 +360,7 @@ class MyPingPong(mympi):
             pp.dopingpong(1)
 
         timing = float(pp.dopingpong(it))
-        self.log.debug("pingpong p1 %s p2 %s avg %s", p1, p2, timing)
+        self.log.debug("%s->%s: %s", p1, p2, timing)
 
         details = {
             'ppgroup': pp.group,
@@ -579,6 +369,36 @@ class MyPingPong(mympi):
 
         return timing, details
 
+    def writehdf5(self, data, attributes, failed, fail):
+        """
+        writes data to a .h5 defined by the -f parameter
+
+        Arguments:
+        data: a 3D matrix containing the data from running pingpong. data[p1][p2][information]
+        attrs: a dict containing the attributes of the test
+        failed: a boolean that is False if there were no fails during testing
+        fail: a 2D array containing information on how many times a rank has failed a test
+        """
+
+        f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
+
+        for k,v in attributes.items():
+            f.attrs[k] = v
+            self.log.debug("added attribute %s: %s to data.attrs", k, v)
+
+        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
+        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
+            if sendrank != self.rank:
+                # we only use the timingdata if the current rank is the sender
+                continue
+            dataset[sendrank,recvrank] = tuple(val)
+
+        if failed:
+            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
+            failset[self.rank] = fail[self.rank]
+
+        f.close()
+
 if __name__ == '__main__':
 
     options = {
@@ -586,7 +406,8 @@ if __name__ == '__main__':
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),
-        'output': ('set the outputfile', str, 'store', 'test2', 'f'),
+        'output': ('set the outputdirectory. a file will be written in format \
+            PP<name>-<worldssize>-msg<msgsize>-nr<number>-it<iterations>-<ddmmyy-hhmm>.h5', str, 'store', 'test2', 'f'),
         'seed': ('set the seed', int, 'store', 2, 's'),    
     }
 
@@ -594,12 +415,10 @@ if __name__ == '__main__':
 
     m = MyPingPong(go.log)
 
-    try:
-        fn = os.path.join(getshared(), go.options.output)
-    except KeyError as err:
-        go.log.error("%s is not set", err)
+    if not os.path.isdir(go.options.output):
+        go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(fn)
+    m.setfn(go.options.output, go.options.iterations, go.options.number, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
@@ -611,4 +430,4 @@ if __name__ == '__main__':
 
     m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, it=go.options.iterations, nr=go.options.number)
 
-    go.log.info("data written to %s.hdf5", fn)
+    go.log.info("data written to %s", go.options.output)
