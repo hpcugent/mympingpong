@@ -112,18 +112,7 @@ class PingPongAnalysis(object):
                 sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
                          (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
-    def addcount(self, count, sub, fig):
-        self.log.debug("addcount")
-
-        maskedcount = n.ma.masked_where(count == 0, count)
-        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
-        cb = fig.colorbar(cax)
-
-        axlim = sub.axis()
-        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
-        sub.set_title('Pair samples (#)')
-
-    def adddata(self, data, sub, fig, latencymin, latencymax):
+    def addlatency(self, data, sub, fig, latencymin, latencymax):
         """make and show tha main latency graph"""
         vmin = latencymin if latencymin else n.min(data[(data > 1/self.scaling).nonzero()])
         vmax = latencymax if latencymax else n.max(data[(data < 1.0*self.scaling).nonzero()])
@@ -138,7 +127,7 @@ class PingPongAnalysis(object):
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title(r'Latency ($\mu s$)')
 
-    def addhist(self, data, sub, fig1):
+    def addhistogram(self, data, sub, fig1):
         self.log.debug("addhist")
         """
         Prepare and filter out 0-data
@@ -163,6 +152,17 @@ class PingPongAnalysis(object):
             patches[i].set_facecolor(fcs[i])
         sub.figure.canvas.draw()
 
+    def addsamplesize(self, count, sub, fig):
+        self.log.debug("addcount")
+
+        maskedcount = n.ma.masked_where(count == 0, count)
+        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
+        cb = fig.colorbar(cax)
+
+        axlim = sub.axis()
+        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
+        sub.set_title('Pair samples (#)')
+        
     def plot(self, latencymin, latencymax, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
@@ -209,14 +209,14 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        self.adddata(data, subdata, fig1, latencymin, latencymax)
+        self.addlatency(data, subdata, fig1, latencymin, latencymax)
 
         histw = 0.7
         subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
-        self.addhist(data, subhist, fig1)
+        self.addhistogram(data, subhist, fig1)
 
         subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
-        self.addcount(count, subcount, fig1)
+        self.addsamplesize(count, subcount, fig1)
 
         fig1.canvas.draw()
 
