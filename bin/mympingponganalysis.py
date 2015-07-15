@@ -31,7 +31,6 @@ Generate plots from output from mympingpong.py
 """
 
 import sys
-import warnings
 from math import sqrt
 
 import h5py
@@ -74,13 +73,13 @@ class PingPongAnalysis(object):
             self.log.debug("collect fail: %s" % self.fail)
 
         #http://stackoverflow.com/a/118508
-        self.count = f['data'][...,0] 
+        self.count = n.ma.array(f['data'][...,0])
         self.log.debug("collect count: %s" % self.count)
 
         data = f['data'][...,1]
         data = data*self.scaling
         data = data/n.where(self.count == 0, 1, self.count)
-        self.data = data
+        self.data = n.ma.array(data)
         self.log.debug("collect data: %s" % data)
 
         f.close()
@@ -116,35 +115,28 @@ class PingPongAnalysis(object):
     def addcount(self, count, sub, fig):
         self.log.debug("addcount")
 
-        cax = sub.imshow(count, cmap=self.cmap, interpolation='nearest')
+        maskedcount = n.ma.masked_where(count == 0, count)
+        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
+        cb = fig.colorbar(cax)
+
         axlim = sub.axis()
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
-
         sub.set_title('Pair samples (#)')
-        cb = fig.colorbar(cax)
-        # cb.set_label('units')
 
     def adddata(self, data, sub, fig, latencymin, latencymax):
-        self.log.debug("adddata")
-
-        vmin = n.min(data[(data > 1/self.scaling).nonzero()])
-        if latencymin < vmin:
-            vmin = latencymin
-
-        vmax = n.max(data[(data < 1.0*self.scaling).nonzero()])
-        if latencymax > vmax:
-            vmax = latencymax
+        """make and show tha main latency graph"""
+        vmin = latencymin if latencymin else n.min(data[(data > 1/self.scaling).nonzero()])
+        vmax = latencymax if latencymax else n.max(data[(data < 1.0*self.scaling).nonzero()])
 
         self.log.debug("adddata: normalize vmin %s vmax %s" % (vmin, vmax))
 
-        cax = sub.imshow(data, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
+        maskeddata = n.ma.masked_where(data == 0, data)
+        cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
+        cb = fig.colorbar(cax)
+
         axlim = sub.axis()
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
-
-        # sub.set_title('Latency (%1.0es)'%(1/self.scaling))
         sub.set_title(r'Latency ($\mu s$)')
-        cb = fig.colorbar(cax)
-        # cb.set_label("%1.0es"%(1/self.scaling))
 
     def addhist(self, data, sub, fig1):
         self.log.debug("addhist")
@@ -171,21 +163,6 @@ class PingPongAnalysis(object):
             patches[i].set_facecolor(fcs[i])
         sub.figure.canvas.draw()
 
-    def addcm(self):
-        self.log.debug("addcm")
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-        badalpha = 0.25
-        badcolor = 'grey'
-
-        cmap = cm.jet
-        cmap.set_bad(color=badcolor, alpha=badalpha)
-        cmap.set_over(color=badcolor, alpha=badalpha)
-        cmap.set_under(color=badcolor, alpha=badalpha)
-
-        self.cmap = cmap
-
     def plot(self, latencymin, latencymax, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
@@ -199,10 +176,9 @@ class PingPongAnalysis(object):
         # mp.rcParams['text.usetex']=True
         mp.rcParams['mathtext.fontset'] = 'custom'
 
-        self.ppl = ppl
-
         # set colormap
-        self.addcm()
+        self.cmap = ppl.get_cmap('jet')
+        self.cmap.set_bad(color='grey', alpha=0.25)
 
         # scale for ISO Ax
         figscale = sqrt(2)
@@ -210,9 +186,8 @@ class PingPongAnalysis(object):
         # 1 millimeter = 0.0393700787 inch
         mmtoin = 0.0393700787
         figwa4 = 210*mmtoin
-        figw = figwa4
-        figh = figw*figscale
-        fig1 = self.ppl.figure(figsize=(figw, figh))
+        figha4 = figwa4*figscale
+        fig1 = ppl.figure(figsize=(figwa4, figha4))
         fig1.show()
 
         def shrink(rec, s=None):
@@ -245,7 +220,7 @@ class PingPongAnalysis(object):
 
         fig1.canvas.draw()
 
-        self.ppl.show()
+        ppl.show()
 
 
 if __name__ == '__main__':
@@ -253,7 +228,7 @@ if __name__ == '__main__':
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
-        'latencymin': ('set the minimum of the latency graph', float, 'store', sys.maxint, 'm'),
+        'latencymin': ('set the minimum of the latency graph', float, 'store', 0, 'm'),
         'latencymax': ('set the maximum of the latency graph', float, 'store', 0, 'M'),
     }
 
