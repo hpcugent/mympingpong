@@ -56,8 +56,6 @@ class PingPongAnalysis(object):
         # use multiplication of 10e6 (ie microsec)
         self.scaling = 1e6
 
-        self.metatags = ['totalranks', 'msgsize', 'nr_tests', 'iter',
-                         'uniquenodes', 'pairmode', 'ppmode', 'ppgroup', 'ppiterations']
         self.meta = None
 
         self.cmap = None
@@ -111,8 +109,9 @@ class PingPongAnalysis(object):
                 if not (m and meta.has_key(m)):
                     continue
                 val = meta[m]
-                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
-                         (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
+                unit = ' sec' if m == 'timing' else ''
+                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s%s" %
+                         (m, val, unit), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
     def addcount(self, count, sub, fig):
         self.log.debug("addcount")
