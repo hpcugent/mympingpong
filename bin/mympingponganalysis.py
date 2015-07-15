@@ -231,11 +231,13 @@ if __name__ == '__main__':
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
-        'latencymin': ('set the minimum of the latency graph', float, 'store', 0, 'm'),
-        'latencymax': ('set the maximum of the latency graph', float, 'store', 0, 'M'),
+        'latencyscale': ('set the minimum and maximum of the latency graph', 'strtuple', 'store', ('0','0'), 'l'),
     }
 
     go = simple_option(options)
     ppa = PingPongAnalysis(go.log)
     ppa.collecthdf5(go.options.input)
-    ppa.plot(latencymin=go.options.latencymin, latencymax=go.options.latencymax)
+    ppa.plot(
+        latencymin=int(go.options.latencyscale[0]), 
+        latencymax=int(go.options.latencyscale[1]),
+        )
