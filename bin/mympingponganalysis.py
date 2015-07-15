@@ -26,6 +26,7 @@
 
 """
 @author: Stijn De Weirdt (Ghent University)
+@author: Jeroen De Clerck (Ghent University)
 
 Generate plots from output from mympingpong.py
 """
@@ -61,8 +62,7 @@ class PingPongAnalysis(object):
         self.cmap = None
 
     def collecthdf5(self, fn):
-        """collects metatags, failures, counters and timingdata from fn.hdf5"""
-
+        """collects metatags, failures, counters and timingdata from fn"""
         f = h5py.File(fn, 'r')
 
         self.meta = dict(f.attrs.items())
@@ -72,7 +72,7 @@ class PingPongAnalysis(object):
             self.fail = f['fail'][:]
             self.log.debug("collect fail: %s" % self.fail)
 
-        #http://stackoverflow.com/a/118508
+        # http://stackoverflow.com/a/118508
         self.count = n.ma.array(f['data'][...,0])
         self.log.debug("collect count: %s" % self.count)
 
@@ -113,7 +113,7 @@ class PingPongAnalysis(object):
                          (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
     def addlatency(self, data, sub, fig, latencymin, latencymax):
-        """make and show tha main latency graph"""
+        """make and show the main latency graph"""
         vmin = latencymin if latencymin else n.min(data[(data > 1/self.scaling).nonzero()])
         vmax = latencymax if latencymax else n.max(data[(data < 1.0*self.scaling).nonzero()])
 
@@ -121,24 +121,27 @@ class PingPongAnalysis(object):
 
         maskeddata = n.ma.masked_where(data == 0, data)
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
-        cb = fig.colorbar(cax)
+        fig.colorbar(cax)
 
         axlim = sub.axis()
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title(r'Latency ($\mu s$)')
 
     def addhistogram(self, data, sub, fig1):
-        self.log.debug("addhist")
-        """
-        Prepare and filter out 0-data
-        """
+        """make and show the histogram"""
+
+        # prepare and filter out 0-data
         d = data.ravel()
         d = d[(d > 1/self.scaling).nonzero()]
         vmin = n.min(d)
         d = d[(d < 1.0*self.scaling).nonzero()]
         vmax = n.max(d)
 
-        (nn, bins, patches) = sub.hist(d, bins=50, range=(vmin, vmax))
+        self.log.debug("histogram data: %s", d)
+        #calculate bins
+
+
+        (nn, bins, patches) = sub.hist(d, bins=50)#, range=(vmin, vmax))
         # sub.set_xlim(int(vmin-1),int(vmax+1))
 
         # black magic: set colormap to histogram bars
@@ -162,7 +165,7 @@ class PingPongAnalysis(object):
         axlim = sub.axis()
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title('Pair samples (#)')
-        
+
     def plot(self, latencymin, latencymax, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
