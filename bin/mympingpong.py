@@ -295,7 +295,7 @@ class MyPingPong(object):
                 fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
 
         failed = n.count_nonzero(fail) > 0
-        timing = round((time.time() - start))
+        timing = int((time.time() - start))
 
         attrs = {
             'pairmode': self.pairmode,
