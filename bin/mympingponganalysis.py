@@ -109,8 +109,8 @@ class PingPongAnalysis(object):
                 if not (m and meta.has_key(m)):
                     continue
                 val = meta[m]
-                unit = 'sec' if m == 'timing' else ''
-                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s %s" %
+                unit = ' sec' if m == 'timing' else ''
+                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s%s" %
                          (m, val, unit), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
     def addcount(self, count, sub, fig):
