@@ -413,7 +413,8 @@ if __name__ == '__main__':
         'output': ('set the outputdirectory. a file will be written in format \
             PP<name>-<worldssize>-msg<msgsize>-nr<number>-it<iterations>-<ddmmyy-hhmm>.h5', str, 'store', 'test2', 'f'),
         'seed': ('set the seed', int, 'store', 2, 's'),
-        'maxruntime': ('set the maximum runtime of pingpong in seconds', int, 'store', 0, 't'),
+        'maxruntime': ('set the maximum runtime of pingpong in seconds \
+                       (default will run infinitely)', int, 'store', 0, 't'),
     }
 
     go = simple_option(options)
