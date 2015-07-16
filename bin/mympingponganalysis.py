@@ -46,7 +46,7 @@ from vsc.utils.generaloption import simple_option
 
 class PingPongAnalysis(object):
 
-    def __init__(self, logger):
+    def __init__(self, logger, latencyscale):
         self.log = logger
 
         self.data = None
@@ -60,6 +60,8 @@ class PingPongAnalysis(object):
         self.meta = None
 
         self.cmap = None
+
+        self.latencyscale = latencyscale
 
     def collecthdf5(self, fn):
         """collects metatags, failures, counters and timingdata from fn"""
@@ -112,12 +114,12 @@ class PingPongAnalysis(object):
                 sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
                          (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
-    def addlatency(self, data, sub, fig, latencyscale, latencymask):
+    def addlatency(self, data, sub, fig, latencymask):
         """make and show the main latency graph"""
         maskeddata = n.ma.masked_outside(n.ma.masked_equal(data, 0), latencymask[0], latencymask[1])
 
-        vmin = latencyscale[0] if latencyscale[0] else maskeddata.min()
-        vmax = latencyscale[1] if latencyscale[1] else maskeddata.max()
+        vmin = self.latencyscale[0] if self.latencyscale[0] else maskeddata.min()
+        vmax = self.latencyscale[1] if self.latencyscale[1] else maskeddata.max()
 
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
         fig.colorbar(cax)
@@ -145,7 +147,13 @@ class PingPongAnalysis(object):
 
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if the bin falls outside the cmap interval it is colored grey.
-        colors = [(0.5,0.5,0.5,1)]*bins
+        # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
+        if self.latencyscale[0] or self.latencyscale[1]:
+            colors = [self.cmap(0)] * binsbelow
+            colors.extend([self.cmap(1.0)] * (bins-binsbelow))
+        else:
+            colors = [(0.5,0.5,0.5,1)]*bins
+
         for i in range(coloredbins):
             colors[binsbelow + i] = self.cmap(1.*i/coloredbins)
         for ind, p in enumerate(patches):
@@ -162,7 +170,7 @@ class PingPongAnalysis(object):
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title('Pair samples (#)')
 
-    def plot(self, latencyscale, latencymask, data=None, count=None, meta=None):
+    def plot(self, latencymask, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
             data = self.data
@@ -208,7 +216,7 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        vmin, vmax = self.addlatency(data, subdata, fig1, latencyscale, latencymask)
+        vmin, vmax = self.addlatency(data, subdata, fig1, latencymask)
 
         histw = 0.7
         subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3), vmin, vmax)
@@ -238,8 +246,6 @@ if __name__ == '__main__':
     }
 
     go = simple_option(options)
-    ppa = PingPongAnalysis(go.log)
-    ppa.collecthdf5(go.options.input)
 
     lscale = (
         float(go.options.latencyscale[0]),
@@ -249,9 +255,11 @@ if __name__ == '__main__':
     lmask = (
         float(go.options.latencymask[0]),
         float(go.options.latencymask[1]),
-        )   
+        ) 
+
+    ppa = PingPongAnalysis(go.log, lscale)
+    ppa.collecthdf5(go.options.input)
 
     ppa.plot(
-        latencyscale=lscale, 
         latencymask=lmask,
         )
