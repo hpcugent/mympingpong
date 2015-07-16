@@ -384,11 +384,7 @@ class MyPingPong(object):
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
         """
-        try:
-            f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
-        except IOError as err:
-            self.log.error("Something went wrong while opening the parallel outputfile! %s", err)
-            sys.exit(4)
+        f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
