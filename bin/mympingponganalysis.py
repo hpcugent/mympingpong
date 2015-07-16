@@ -126,25 +126,30 @@ class PingPongAnalysis(object):
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title(r'Latency ($\mu s$)')
 
-    def addhistogram(self, data, sub, fig1):
+        return vmin, vmax
+
+    def addhistogram(self, data, sub, fig1, vmin, vmax):
         """make and show the histogram"""
+        bins = 50
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
-        self.log.debug("histogram data: %s", d)
+        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=bins)
 
-        (nn, bins, patches) = sub.hist(n.ma.compressed(d), bins=50)
+        # We don't want the very last binedge
+        binedges = binedges[:-1]
 
-        # black magic: set colormap to histogram bars
-        avgbins = (bins[1:]+bins[0:-1])/2
-        newc = sub.pcolor(avgbins.reshape(avgbins.shape[0], 1), cmap=self.cmap)
-        sub.figure.canvas.draw()
-        fcs = newc.get_facecolors()
-        newc.set_visible(False)
-        newc.remove()
-        for i in xrange(avgbins.size):
-            patches[i].set_facecolor(fcs[i])
-        sub.figure.canvas.draw()
+        binsbelow = sum(i < vmin for i in binedges)
+        coloredbins = sum(i >= vmin and i <= vmax for i in binedges)
+        self.log.debug("got bins info: %s, %s", binsbelow, coloredbins)
+
+        # color every bin according to its corresponding cmapvalue from the latency graph
+        # if the bin falls outside the cmap interval it is colored grey.
+        colors = [(0.5,0.5,0.5,1)]*bins
+        for i in range(coloredbins):
+            colors[binsbelow + i] = self.cmap(1.*i/coloredbins)
+        for ind, p in enumerate(patches):
+            patches[ind].set_facecolor(colors[ind])
 
     def addsamplesize(self, count, sub, fig):
         self.log.debug("addcount")
@@ -203,11 +208,11 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        self.addlatency(data, subdata, fig1, latencyscale, latencymask)
+        vmin, vmax = self.addlatency(data, subdata, fig1, latencyscale, latencymask)
 
         histw = 0.7
-        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
-        self.addhistogram(data, subhist, fig1)
+        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3), vmin, vmax)
+        self.addhistogram(data, subhist, fig1, vmin, vmax)
 
         subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
         self.addsamplesize(count, subcount, fig1)
@@ -238,15 +243,15 @@ if __name__ == '__main__':
 
     lscale = (
         float(go.options.latencyscale[0]),
-        float(go.options.latencyscale[1])
+        float(go.options.latencyscale[1]),
         )
 
     lmask = (
         float(go.options.latencymask[0]),
-        float(go.options.latencymask[1])
+        float(go.options.latencymask[1]),
         )   
 
     ppa.plot(
         latencyscale=lscale, 
-        latencymask=lmask
+        latencymask=lmask,
         )
