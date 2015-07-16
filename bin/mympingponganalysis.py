@@ -111,8 +111,9 @@ class PingPongAnalysis(object):
                 if not (m and meta.has_key(m)):
                     continue
                 val = meta[m]
-                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
-                         (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
+                unit = ' sec' if m == 'timing' else ''
+                sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s%s" %
+                         (m, val, unit), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
     def addlatency(self, data, sub, fig, latencymask):
         """make and show the main latency graph"""
