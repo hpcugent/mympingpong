@@ -114,7 +114,7 @@ class PingPongAnalysis(object):
 
     def addlatency(self, data, sub, fig, latencyscale, latencymask):
         """make and show the main latency graph"""
-        maskeddata = n.ma.masked_outside(data, latencymask[0], latencymask[1])
+        maskeddata = n.ma.masked_outside(n.ma.masked_equal(data, 0), latencymask[0], latencymask[1])
 
         vmin = latencyscale[0] if latencyscale[0] else n.min(maskeddata[(maskeddata > 1/self.scaling).nonzero()])
         vmax = latencyscale[1] if latencyscale[1] else n.max(maskeddata[(maskeddata < 1.0*self.scaling).nonzero()])
@@ -131,9 +131,12 @@ class PingPongAnalysis(object):
 
         # prepare and filter out 0-data
         d = data.ravel()
+        self.log.debug("d1: %s", d)
         d = d[(d > 1/self.scaling).nonzero()]
+        self.log.debug("d2: %s", d)
         vmin = n.min(d)
         d = d[(d < 1.0*self.scaling).nonzero()]
+        self.log.debug("d3: %s", d)
         vmax = n.max(d)
 
         self.log.debug("histogram data: %s", d)
@@ -236,7 +239,7 @@ if __name__ == '__main__':
         'latencymask': ('set the interval of the data that should be plotted in the latency graph, so  \
             any datapoints that falls outside this interval will not be plotted. The colorscheme min and max \
             will correspond to respectively the lowest and highest value in the remaining data-array',
-            'strtuple', 'store', ('1','2147483647'), 'm'
+            'strtuple', 'store', ('0','2147483647'), 'm'
             ),
     }
 
@@ -245,13 +248,13 @@ if __name__ == '__main__':
     ppa.collecthdf5(go.options.input)
 
     lscale = (
-        int(go.options.latencyscale[0]),
-        int(go.options.latencyscale[1])
+        float(go.options.latencyscale[0]),
+        float(go.options.latencyscale[1])
         )
 
     lmask = (
-        int(go.options.latencymask[0]),
-        int(go.options.latencymask[1])
+        float(go.options.latencymask[0]),
+        float(go.options.latencymask[1])
         )   
 
     ppa.plot(
