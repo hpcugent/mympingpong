@@ -112,14 +112,13 @@ class PingPongAnalysis(object):
                 sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s" %
                          (m, val), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
-    def addlatency(self, data, sub, fig, latencymin, latencymax):
+    def addlatency(self, data, sub, fig, latencyscale, latencymask):
         """make and show the main latency graph"""
-        vmin = latencymin if latencymin else n.min(data[(data > 1/self.scaling).nonzero()])
-        vmax = latencymax if latencymax else n.max(data[(data < 1.0*self.scaling).nonzero()])
+        maskeddata = n.ma.masked_outside(data, latencymask[0], latencymask[1])
 
-        self.log.debug("adddata: normalize vmin %s vmax %s" % (vmin, vmax))
+        vmin = latencyscale[0] if latencyscale[0] else n.min(maskeddata[(maskeddata > 1/self.scaling).nonzero()])
+        vmax = latencyscale[1] if latencyscale[1] else n.max(maskeddata[(maskeddata < 1.0*self.scaling).nonzero()])
 
-        maskeddata = n.ma.masked_where(data == 0, data)
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
         fig.colorbar(cax)
 
@@ -166,7 +165,7 @@ class PingPongAnalysis(object):
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title('Pair samples (#)')
 
-    def plot(self, latencymin, latencymax, data=None, count=None, meta=None):
+    def plot(self, latencyscale, latencymask, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
             data = self.data
@@ -212,7 +211,7 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        self.addlatency(data, subdata, fig1, latencymin, latencymax)
+        self.addlatency(data, subdata, fig1, latencyscale, latencymask)
 
         histw = 0.7
         subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
@@ -231,13 +230,31 @@ if __name__ == '__main__':
     # dict = {longopt:(help_description,type,action,default_value,shortopt),}
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
-        'latencyscale': ('set the minimum and maximum of the latency graph', 'strtuple', 'store', ('0','0'), 'l'),
+        'latencyscale': ('set the minimum and maximum of the latency graph colorscheme',
+             'strtuple', 'store', ('0','0'), 's'
+             ),
+        'latencymask': ('set the interval of the data that should be plotted in the latency graph, so  \
+            any datapoints that falls outside this interval will not be plotted. The colorscheme min and max \
+            will correspond to respectively the lowest and highest value in the remaining data-array',
+            'strtuple', 'store', ('1','2147483647'), 'm'
+            ),
     }
 
     go = simple_option(options)
     ppa = PingPongAnalysis(go.log)
     ppa.collecthdf5(go.options.input)
+
+    lscale = (
+        int(go.options.latencyscale[0]),
+        int(go.options.latencyscale[1])
+        )
+
+    lmask = (
+        int(go.options.latencymask[0]),
+        int(go.options.latencymask[1])
+        )   
+
     ppa.plot(
-        latencymin=int(go.options.latencyscale[0]), 
-        latencymax=int(go.options.latencyscale[1]),
+        latencyscale=lscale, 
+        latencymask=lmask
         )
