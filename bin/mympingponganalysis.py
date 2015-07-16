@@ -116,8 +116,8 @@ class PingPongAnalysis(object):
         """make and show the main latency graph"""
         maskeddata = n.ma.masked_outside(n.ma.masked_equal(data, 0), latencymask[0], latencymask[1])
 
-        vmin = latencyscale[0] if latencyscale[0] else n.min(maskeddata[(maskeddata > 1/self.scaling).nonzero()])
-        vmax = latencyscale[1] if latencyscale[1] else n.max(maskeddata[(maskeddata < 1.0*self.scaling).nonzero()])
+        vmin = latencyscale[0] if latencyscale[0] else maskeddata.min()
+        vmax = latencyscale[1] if latencyscale[1] else maskeddata.max()
 
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
         fig.colorbar(cax)
@@ -129,22 +129,11 @@ class PingPongAnalysis(object):
     def addhistogram(self, data, sub, fig1):
         """make and show the histogram"""
 
-        # prepare and filter out 0-data
-        d = data.ravel()
-        self.log.debug("d1: %s", d)
-        d = d[(d > 1/self.scaling).nonzero()]
-        self.log.debug("d2: %s", d)
-        vmin = n.min(d)
-        d = d[(d < 1.0*self.scaling).nonzero()]
-        self.log.debug("d3: %s", d)
-        vmax = n.max(d)
-
+        # filter out zeros and data that is too small or too large to show with the selected scaling
+        d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
         self.log.debug("histogram data: %s", d)
-        #calculate bins
 
-
-        (nn, bins, patches) = sub.hist(d, bins=50)#, range=(vmin, vmax))
-        # sub.set_xlim(int(vmin-1),int(vmax+1))
+        (nn, bins, patches) = sub.hist(n.ma.compressed(d), bins=50)
 
         # black magic: set colormap to histogram bars
         avgbins = (bins[1:]+bins[0:-1])/2
