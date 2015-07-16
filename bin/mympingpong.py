@@ -388,12 +388,7 @@ class MyPingPong(object):
             f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
         except IOError as err:
             self.log.error("Something went wrong while opening the parallel outputfile! %s", err)
-            self.log.debug("attempting to salvage data")
-            try:
-                f = h5py.File("%s-rank%s" % (self.fn, self.rank), 'w', driver='mpio', comm=self.comm)
-            except IOError as err:
-                self.log.error("Something went wrong while opening the backup-outputfile! %s", err)
-                sys.exit(4)
+            sys.exit(4)
 
         for k,v in attributes.items():
             f.attrs[k] = v

@@ -141,8 +141,8 @@ class PingPongAnalysis(object):
         # We don't want the very last binedge
         binedges = binedges[:-1]
 
-        binsbelow = sum(i < vmin for i in binedges)
-        coloredbins = sum(i >= vmin and i <= vmax for i in binedges)
+        binsbelow = len([i for i in binedges if i < vmin])
+        coloredbins = len([i for i in binedges if i >= vmin and i <= vmax])
         self.log.debug("got bins info: %s, %s", binsbelow, coloredbins)
 
         # color every bin according to its corresponding cmapvalue from the latency graph
@@ -156,8 +156,8 @@ class PingPongAnalysis(object):
 
         for i in range(coloredbins):
             colors[binsbelow + i] = self.cmap(1.*i/coloredbins)
-        for ind, p in enumerate(patches):
-            patches[ind].set_facecolor(colors[ind])
+        for color, patch in zip(colors,patches):
+            patch.set_facecolor(color)
 
     def addsamplesize(self, count, sub, fig):
         self.log.debug("addcount")
