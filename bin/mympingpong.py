@@ -71,6 +71,8 @@ class MyPingPong(object):
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
+        self.outputfile = None
+
     def setfn(self, directory, it, nr, msg, remove=True):
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg,nr, it, timestamp)
@@ -79,6 +81,8 @@ class MyPingPong(object):
                 MPI.File.Delete(self.fn)
             except Exception as err:
                 self.log.error("Failed to delete file %s: %s" % (self.fn, err))
+
+        self.outputfile = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
         self.pairmode = pairmode
@@ -384,7 +388,7 @@ class MyPingPong(object):
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
         """
-        f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
+        f = self.outputfile
 
         for k,v in attributes.items():
             f.attrs[k] = v
