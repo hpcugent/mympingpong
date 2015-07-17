@@ -225,19 +225,6 @@ class PingPongAnalysis(object):
         fig1 = ppl.figure(figsize=(figwa4, figha4))
         fig1.show()
 
-        def shrink(rec, s=None):
-            if not s:
-                s = 0.1
-            l, b, w, h = rec
-
-            nl = l+w*s/2
-            nb = b+h*s/2
-            nw = (1-s)*w
-            nh = (1-s)*h
-
-            ans = [nl, nb, nw, nh]
-            return ans
-
         hmargin = 0.04
         wmargin = 0.1
 
@@ -257,12 +244,9 @@ class PingPongAnalysis(object):
         subhist = fig1.add_axes((wmargin, pointer, histw, histh))
         self.addhistogram(data, subhist, fig1, vextrema)
 
-        
         subcount = fig1.add_axes((histw, pointer, 1-histw, histh))
         self.addsamplesize(count, subcount, fig1)
         
-
-
         fig1.canvas.draw()
 
         ppl.show()
