@@ -302,7 +302,7 @@ class MyPingPong(object):
         for k, (count, timings) in data.items():
             data[k] = (count, n.sum(timings)/count, n.std(timings))
 
-        self.log.debug("finished building data: %s", data)
+        self.log.debug("finished building data { (p1,p2) : (count, avg, stdev), }: %s", data)
 
         failed = n.count_nonzero(fail) > 0
         timing = int((time.time() - start))
@@ -314,7 +314,7 @@ class MyPingPong(object):
             'nr_tests': nr,
             'msgsize': msgsize,
             'iter': it,
-            'pingpongmode' : pmode,
+            'ppmode' : pmode,
             'failed' : failed,
             'timing' : timing,
         }
@@ -374,7 +374,7 @@ class MyPingPong(object):
             pp.dopingpong(1)
 
         timingdata = pp.dopingpong(it)
-        self.log.debug("%s->%s: %s", p1, p2, timingdata)
+        self.log.debug("%s->%s", p1, p2)
 
         details = {
             'ppgroup': pp.group,

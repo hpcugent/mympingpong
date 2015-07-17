@@ -100,7 +100,7 @@ class PingPongAnalysis(object):
         right = left + width
         top = bottom + height
 
-        cols = 3
+        cols = 4
         tags = self.meta.keys()
         nrmeta = len(tags)
         while nrmeta % cols != 0:
@@ -128,11 +128,8 @@ class PingPongAnalysis(object):
         vmin = self.latencyscale[0] if self.latencyscale[0] is not None else maskeddata.min()
         vmax = self.latencyscale[1] if self.latencyscale[1] is not None else maskeddata.max()
 
-        cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
+        cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax, origin='lower')
         fig.colorbar(cax)
-
-        axlim = sub.axis()
-        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title(r'Latency ($\mu s$)')
 
         return vmin, vmax
@@ -197,11 +194,8 @@ class PingPongAnalysis(object):
         self.log.debug("add a sample size graph to the plot")
 
         maskedcount = n.ma.masked_where(count == 0, count)
-        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
+        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0, origin='lower')
         cb = fig.colorbar(cax)
-
-        axlim = sub.axis()
-        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title('Pair samples (#)')
 
     def plot(self, data=None, count=None, meta=None):
@@ -244,20 +238,30 @@ class PingPongAnalysis(object):
             ans = [nl, nb, nw, nh]
             return ans
 
-        texth = 0.1
-        subtext = fig1.add_axes(shrink([0, 1-texth, 1, texth]))
+        hmargin = 0.04
+        wmargin = 0.1
+
+        texth = 0.08
+        pointer = 1 - texth
+        subtext = fig1.add_axes((0, pointer, 1, texth))
         self.addtext(meta, subtext, fig1)
 
-        datah = 1/figscale
-        subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        vextrema = self.addlatency(data, subdata, fig1)
+        datah = 0.5
+        pointer = pointer - datah - hmargin
+        subdata = fig1.add_axes((0, pointer, 1, datah))
+        vextrema = self.addlatency(data, subdata, fig1, latencymask)
 
-        histw = 0.7
-        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
+        histh = 0.12
+        histw = 0.6
+        pointer = pointer -histh - hmargin
+        subhist = fig1.add_axes((wmargin, pointer, histw, histh))
         self.addhistogram(data, subhist, fig1, vextrema)
 
-        subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
+        
+        subcount = fig1.add_axes((histw, pointer, 1-histw, histh))
         self.addsamplesize(count, subcount, fig1)
+        
+
 
         fig1.canvas.draw()
 

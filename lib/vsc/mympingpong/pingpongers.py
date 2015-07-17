@@ -101,7 +101,6 @@ class PingPongSR(object):
             self.run1(self.sndbuf, self.other, self.tag1)
             self.run2(self.rcvbuf, self.other, self.tag2)
             self.end[x] = MPI.Wtime()
-        self.log.debug("it: %s, start: %s, end: %s",self.it, self.start, self.end)
 
         return self.end - self.start
 
@@ -158,8 +157,6 @@ class PingPongSRfast(PingPongSR):
                                    group)
             self.start[x] = start
             self.end[x] = end
-
-        self.log.debug("it: %s, start: %s, end: %s",self.it, self.start, self.end)
 
         return self.end - self.start
 
