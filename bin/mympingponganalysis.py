@@ -136,7 +136,8 @@ class PingPongAnalysis(object):
 
     def addhistogram(self, data, sub, fig1, vmin, vmax):
         """make and show the histogram"""
-        bins = 50
+
+        bins = 50 #amount of bins in the histogram. 50 is a good default
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
@@ -168,16 +169,16 @@ class PingPongAnalysis(object):
         if lscale[0] or lscale[1]:
             begin = lmask[0] if lmask[0] else 0
             begin_ind = bisect.bisect(binedges,begin)
-            end = lmask[1] if lmask[1] != sys.maxint else bins
+            end = lmask[1] if lmask[1] < float('inf') else binedges[-1]
             end_ind = bisect.bisect(binedges,end)
             self.log.debug("got beginning and end: %s, %s",begin,end)
 
             if begin < lscale[0]:
                 colors = [self.cmap(0) if i>=begin_ind and i<lscale0_ind else c for i,c in enumerate(colors)]
             if lscale[1] < end:
-                colors = [ self.cmap(1.0) if i>=lscale1_ind and i<end_ind else c for i,c in enumerate(colors)]
+                colors = [self.cmap(1.0) if i>=lscale1_ind and i<end_ind else c for i,c in enumerate(colors)]
 
-        if lmask[0] or lmask[1] != sys.maxint:
+        if lmask[0] or lmask[1] < float('inf'):
             if lmask[0] > vmin:
                 colors = [(0.5,0.5,0.5,1) if i<lmask0_ind else c for i,c in enumerate(colors)]
             if vmax > lmask[1]:
@@ -187,7 +188,7 @@ class PingPongAnalysis(object):
             patch.set_facecolor(color)
 
     def addsamplesize(self, count, sub, fig):
-        self.log.debug("addcount")
+        self.log.debug("add a sample size graph to the plot")
 
         maskedcount = n.ma.masked_where(count == 0, count)
         cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
@@ -265,10 +266,10 @@ if __name__ == '__main__':
         'latencyscale': ('set the minimum and maximum of the latency graph colorscheme',
              'strtuple', 'store', ('0','0'), 's'
              ),
-        'latencymask': ('set the interval of the data that should be plotted in the latency graph, so  \
-            any datapoints that falls outside this interval will not be plotted. The colorscheme min and max \
-            will correspond to respectively the lowest and highest value in the remaining data-array',
-            'strtuple', 'store', ('0','2147483647'), 'm'
+        'latencymask': ('set the interval of the data that should be plotted in the latency graph, so'
+            'any datapoints that falls outside this interval will not be plotted. The colorscheme min and max'
+            'will correspond to respectively the lowest and highest value in the remaining data-array',
+            'strtuple', 'store', ('0','inf'), 'm'
             ),
     }
 
