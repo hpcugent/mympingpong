@@ -224,18 +224,10 @@ class PingPongAnalysis(object):
         sub.set_title('standard deviation')
 
 
-    def plot(self, latencymask, data=None, count=None, meta=None):
+    def plot(self, latencymask):
         self.log.debug("plot")
-        if not data:
-            data = self.data
-        if not count:
-            count = self.count
-        if not meta:
-            meta = self.meta
 
-        # enable LaTeX processing. Internal mathtext should work fine too
-        # mp.rcParams['text.usetex']=True
-        mp.rcParams['mathtext.fontset'] = 'custom'
+        mp.rcParams.update({'font.size': 15})
 
         # set colormap
         self.cmap = plt.get_cmap('jet')
@@ -246,18 +238,18 @@ class PingPongAnalysis(object):
         gs1 = gridspec.GridSpec(1, 1)
         gs1.update(left=0.02, right=0.54, wspace=0.05)
 
-        vmin, vmax = self.addlatency(data, plt.subplot(gs1[:, :]), fig1, latencymask)
+        vmin, vmax = self.addlatency(self.data, plt.subplot(gs1[:, :]), fig1, latencymask)
 
         gs2 = gridspec.GridSpec(7, 3)
         gs2.update(left=0.55, right=0.98, wspace=0.1, hspace=0.4)
 
         ax3 = plt.subplot(gs2[0:1, :])
-        self.addtext(meta, ax3, fig1)
+        self.addtext(self.meta, ax3, fig1)
 
         ax4 = plt.subplot(gs2[1:3, :])
-        self.addhistogram(data, ax4, fig1, vmin, vmax)
+        self.addhistogram(self.data, ax4, fig1, vmin, vmax)
         ax5 = plt.subplot(gs2[3:5, 0])
-        self.addsamplesize(count, ax5, fig1)
+        self.addsamplesize(self.count, ax5, fig1)
         ax6 = plt.subplot(gs2[3:5, 1])
         self.addconsistency(self.consistency, ax6, fig1)
 
