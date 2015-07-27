@@ -31,6 +31,7 @@
 Generate plots from output from mympingpong.py
 """
 
+import bisect
 import sys
 from math import sqrt
 
@@ -46,7 +47,7 @@ from vsc.utils.generaloption import simple_option
 
 class PingPongAnalysis(object):
 
-    def __init__(self, logger, latencyscale):
+    def __init__(self, logger, latencyscale, latencymask):
         self.log = logger
 
         self.data = None
@@ -62,6 +63,8 @@ class PingPongAnalysis(object):
         self.cmap = None
 
         self.latencyscale = latencyscale
+        self.latencymask = latencymask
+
 
     def collecthdf5(self, fn):
         """collects metatags, failures, counters and timingdata from fn"""
@@ -139,24 +142,47 @@ class PingPongAnalysis(object):
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
         (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=bins)
 
-        # We don't want the very last binedge
-        binedges = binedges[:-1]
+        # We don't want the very first binedge
+        binedges = binedges[1:]
 
-        binsbelow = len([i for i in binedges if i < vmin])
-        coloredbins = len([i for i in binedges if i >= vmin and i <= vmax])
-        self.log.debug("got bins info: %s, %s", binsbelow, coloredbins)
+        lscale = self.latencyscale
+        lmask = self.latencymask
+
+        lscale0_ind = bisect.bisect(binedges,lscale[0])
+        lscale1_ind = bisect.bisect(binedges,lscale[1])
+        lmask0_ind = bisect.bisect(binedges,lmask[0])
+        lmask1_ind = bisect.bisect(binedges,lmask[1])
+        vmin_ind = bisect.bisect(binedges,vmin)
+        vmax_ind = bisect.bisect(binedges,vmax)
+
+        self.log.debug("got indices: lscale0: %s, lscale1: %s, lmask0: %s, lmask1: %s, vmin: %s, vmax: %s", lscale0_ind, lscale1_ind, lmask0_ind, lmask1_ind, vmin_ind, vmax_ind)
 
         # color every bin according to its corresponding cmapvalue from the latency graph
-        # if the bin falls outside the cmap interval it is colored grey.
+        # if the bin is masked or falls outside the cmap interval it is colored grey.
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
-        if self.latencyscale[0] or self.latencyscale[1]:
-            colors = [self.cmap(0)] * binsbelow
-            colors.extend([self.cmap(1.0)] * (bins-binsbelow))
-        else:
-            colors = [(0.5,0.5,0.5,1)]*bins
+        colors = [(0.5,0.5,0.5,1)]*bins
 
-        for i in range(coloredbins):
-            colors[binsbelow + i] = self.cmap(1.*i/coloredbins)
+        for i in range(vmax_ind-vmin_ind):
+            colors[vmin_ind + i] = self.cmap(1.*i/(vmax_ind-vmin_ind))
+
+        if lscale[0] or lscale[1]:
+            begin = lmask[0] if lmask[0] else 0
+            begin_ind = bisect.bisect(binedges,begin)
+            end = lmask[1] if lmask[1] != sys.maxint else bins
+            end_ind = bisect.bisect(binedges,end)
+            self.log.debug("got beginning and end: %s, %s",begin,end)
+
+            if begin < lscale[0]:
+                colors = [self.cmap(0) if i>=begin_ind and i<lscale0_ind else c for i,c in enumerate(colors)]
+            if lscale[1] < end:
+                colors = [ self.cmap(1.0) if i>=lscale1_ind and i<end_ind else c for i,c in enumerate(colors)]
+
+        if lmask[0] or lmask[1] != sys.maxint:
+            if lmask[0] > vmin:
+                colors = [(0.5,0.5,0.5,1) if i<lmask0_ind else c for i,c in enumerate(colors)]
+            if vmax > lmask[1]:
+                colors = [(0.5,0.5,0.5,1) if i>=lmask1_ind else c for i,c in enumerate(colors)]
+ 
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
 
@@ -171,7 +197,7 @@ class PingPongAnalysis(object):
         sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
         sub.set_title('Pair samples (#)')
 
-    def plot(self, latencymask, data=None, count=None, meta=None):
+    def plot(self, data=None, count=None, meta=None):
         self.log.debug("plot")
         if not data:
             data = self.data
@@ -217,7 +243,7 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        vmin, vmax = self.addlatency(data, subdata, fig1, latencymask)
+        vmin, vmax = self.addlatency(data, subdata, fig1, self.latencymask)
 
         histw = 0.7
         subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3), vmin, vmax)
@@ -258,9 +284,7 @@ if __name__ == '__main__':
         float(go.options.latencymask[1]),
         ) 
 
-    ppa = PingPongAnalysis(go.log, lscale)
+    ppa = PingPongAnalysis(go.log, lscale, lmask)
     ppa.collecthdf5(go.options.input)
 
-    ppa.plot(
-        latencymask=lmask,
-        )
+    ppa.plot()
