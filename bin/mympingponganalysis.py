@@ -161,16 +161,15 @@ class PingPongAnalysis(object):
         colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(bins-vmax_ind)
 
         if lscale != (None,None):
-            begin = 0 if lmask[0] is None else lmask[0]
-            end = binedges[-1] if lmask[1] is None else lmask[1]
-            self.log.debug("got beginning and end: %s, %s",begin,end)
+            coloredges = (0, binedges[-1]) if lmask == (None,None) else (lmask[0], lmask[1])
+            begin_ind, end_ind = map(bisect_edges, coloredges)
             lscale0_ind, lscale1_ind = map(bisect_edges, lscale)
 
-            if begin < lscale[0]:
-                begin_ind = bisect.bisect(binedges,begin)                
+            if coloredges[0] < lscale[0]:
+                begin_ind = bisect.bisect(binedges,coloredges[0])                
                 colors = self.overwritecolors(self.cmap(0), colors, begin_ind, lscale0_ind )
-            if lscale[1] < end:
-                end_ind = bisect.bisect(binedges,end)
+            if lscale[1] < coloredges[1]:
+                end_ind = bisect.bisect(binedges,coloredges[1])
                 colors = self.overwritecolors(self.cmap(1.0), colors, lscale1_ind, end_ind )
 
         if lmask != (None,None):
