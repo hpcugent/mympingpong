@@ -228,23 +228,21 @@ class PingPongAnalysis(object):
 
         fig1 = plt.figure(figsize=(32,18), dpi=60)
 
-        gs1 = gridspec.GridSpec(1, 1)
-        gs1.update(left=0.02, right=0.54, wspace=0.05)
+        gs1 = gridspec.GridSpec(10, 10, left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.05, hspace=0.4)
 
-        vextrema = self.addlatency(self.data, plt.subplot(gs1[:, :]), fig1)
-
-        gs2 = gridspec.GridSpec(7, 3)
-        gs2.update(left=0.55, right=0.98, wspace=0.1, hspace=0.4)
-
-        ax3 = plt.subplot(gs2[0:1, :])
-        self.addtext(self.meta, ax3, fig1)
-
-        ax4 = plt.subplot(gs2[1:3, :])
+        ax1 = plt.subplot(gs1[0:8, 0:5])
+        vextrema = self.addlatency(self.data, ax1, fig1)
+        ax4 = plt.subplot(gs1[8:10, 0:4])
         self.addhistogram(self.data, ax4, fig1, vextrema)
-        ax5 = plt.subplot(gs2[3:5, 0])
+
+        ax3 = plt.subplot(gs1[0:1, 5:10])
+        self.addtext(self.meta, ax3, fig1)
+        ax5 = plt.subplot(gs1[3:5, 5:7])
         self.addsamplesize(self.count, ax5, fig1)
-        ax6 = plt.subplot(gs2[3:5, 1])
+        ax6 = plt.subplot(gs1[3:5, 7:9])
         self.addconsistency(self.consistency, ax6, fig1)
+        ax7 = plt.subplot(gs1[8:10, 5:9])
+        self.addhistogram(self.data, ax7, fig1, vextrema)
 
         fig1.canvas.draw()
 
