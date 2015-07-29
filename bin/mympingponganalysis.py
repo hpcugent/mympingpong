@@ -209,14 +209,13 @@ class PingPongAnalysis(object):
         sub.set_title('Pair samples (#)')
 
     def addconsistency(self, consistency, sub, fig):
-        self.log.debug("addcount")
+        self.log.debug("add a standard deviation graph to the plot")
 
         maskedconsistency= n.ma.masked_where(consistency == 0, consistency)
         cax = sub.imshow(maskedconsistency, cmap=self.cmap, interpolation='nearest', vmin = 0, origin='lower')
         cb = fig.colorbar(cax)
         self.setticks(3, n.size(consistency,0), sub)
         sub.set_title('standard deviation')
-
 
     def plot(self):
         self.log.debug("plot")
@@ -246,20 +245,6 @@ class PingPongAnalysis(object):
         self.addsamplesize(self.count, ax5, fig1)
         ax6 = plt.subplot(gs2[3:5, 1])
         self.addconsistency(self.consistency, ax6, fig1)
-
-        """
-        ax7 = plt.subplot(gs2[3:5, 2])
-        ax7.set_title("ax7")
-
-        ax8 = plt.subplot(gs2[5:7, 0])
-        ax8.set_title("ax8")
-
-        ax9 = plt.subplot(gs2[5:7, 1])
-        ax9.set_title("ax9")
-
-        ax10 = plt.subplot(gs2[5:7, 2])
-        ax10.set_title("ax10")
-        """
 
         fig1.canvas.draw()
 
