@@ -263,7 +263,7 @@ class MyPingPong(object):
             # therefore, create the keys beforehand to minimize hash collisions
             # possible combinations are the permutations of range(size) that contain rank
             keys = [tup for tup in permutations(range(self.size), 2) if self.rank in tup]
-            data = dict.fromkeys(keys, (0,0))
+            data = dict.fromkeys(keys, (0, 0))
             self.log.debug("created a datadict from keys: %s", keys)
         else:
             data = dict()
@@ -285,19 +285,24 @@ class MyPingPong(object):
             if barrier:
                 self.comm.barrier()
 
-            timing, pmodedetails = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend, it=it)
+            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend, it=it)
 
             if barrier2:
                 self.comm.barrier()
 
             key = tuple(pair)
             try:
-                count, old_timing = data.get(key, (0, 0))
-                data[key] = (count + 1, old_timing + timing)
+                count, old_timingdata = data.get(key, (0, 0))
+                data[key] = (count + 1, n.append(old_timingdata, timingdata))
             except KeyError as err:
                 self.log.error("pair %s is not in permutation", key)
             if (-1 in key) or (-2 in key):
                 fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
+
+        for k, (count, timings) in data.items():
+            data[k] = (count, n.sum(timings)/count, n.std(timings))
+
+        self.log.debug("finished building data { (p1,p2) : (count, avg, stdev), }: %s", data)
 
         failed = n.count_nonzero(fail) > 0
         timing = int((time.time() - start))
@@ -309,7 +314,7 @@ class MyPingPong(object):
             'nr_tests': nr,
             'msgsize': msgsize,
             'iter': it,
-            'pingpongmode' : pmode,
+            'ppmode' : pmode,
             'failed' : failed,
             'timing' : timing,
         }
@@ -368,15 +373,15 @@ class MyPingPong(object):
             self.log.debug("pingpong: dummy first")
             pp.dopingpong(1)
 
-        timing = float(pp.dopingpong(it))
-        self.log.debug("%s->%s: %s", p1, p2, timing)
+        timingdata = pp.dopingpong(it)
+        self.log.debug("%s->%s", p1, p2)
 
         details = {
             'ppgroup': pp.group,
             'ppiterations': pp.it,
         }
 
-        return timing, details
+        return timingdata, details
 
     def writehdf5(self, data, attributes, failed, fail):
         """

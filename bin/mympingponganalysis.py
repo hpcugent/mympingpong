@@ -37,10 +37,12 @@ from math import sqrt
 
 import h5py
 import matplotlib as mp
-import matplotlib.pyplot as ppl
+import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.gridspec as gridspec
 import numpy as n
 from matplotlib.colorbar import Colorbar, make_axes
+
 
 from vsc.utils.generaloption import simple_option
 
@@ -53,7 +55,7 @@ class PingPongAnalysis(object):
         self.data = None
         self.count = None
         self.fail = None
-        self.nodemap = None
+        self.consistency = None
 
         # use multiplication of 10e6 (ie microsec)
         self.scaling = 1e6
@@ -87,7 +89,19 @@ class PingPongAnalysis(object):
         self.data = n.ma.array(data)
         self.log.debug("collect data: %s" % data)
 
+        self.consistency = n.ma.array(f['data'][...,2])
+        self.log.debug("collect consistency: %s" % self.consistency)
+
         f.close()
+
+    def setticks(self, nrticks, length, sub):
+        """make and set evenly spaced ticks for the subplot, that excludes zero and max"""
+        ticks = [0] * nrticks
+        for i in range(nrticks):
+            ticks[i] = round((i+1) * length/ (nrticks+1))
+
+        sub.set_xticks(ticks)
+        sub.set_yticks(ticks)
 
     def addtext(self, meta, sub, fig):
         self.log.debug("addtext")
@@ -128,11 +142,9 @@ class PingPongAnalysis(object):
         vmin = maskeddata.min() if self.latencyscale[0] is None else self.latencyscale[0]
         vmax = maskeddata.max() if self.latencyscale[1] is None else self.latencyscale[1]
 
-        cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
+        cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax, origin='lower')
         fig.colorbar(cax)
-
-        axlim = sub.axis()
-        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
+        self.setticks(7, n.size(data,0), sub)
         sub.set_title(r'Latency ($\mu s$)')
 
         return vmin, vmax
@@ -191,71 +203,52 @@ class PingPongAnalysis(object):
         self.log.debug("add a sample size graph to the plot")
 
         maskedcount = n.ma.masked_where(count == 0, count)
-        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0)
+        cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin = 0, origin='lower')
         cb = fig.colorbar(cax)
-
-        axlim = sub.axis()
-        sub.axis(n.append(axlim[0:2], axlim[2::][::-1]))
+        self.setticks(3, n.size(count,0), sub)
         sub.set_title('Pair samples (#)')
 
-    def plot(self, data=None, count=None, meta=None):
-        self.log.debug("plot")
-        if not data:
-            data = self.data
-        if not count:
-            count = self.count
-        if not meta:
-            meta = self.meta
+    def addconsistency(self, consistency, sub, fig):
+        self.log.debug("add a standard deviation graph to the plot")
 
-        # enable LaTeX processing. Internal mathtext should work fine too
-        # mp.rcParams['text.usetex']=True
-        mp.rcParams['mathtext.fontset'] = 'custom'
+        maskedconsistency= n.ma.masked_where(consistency == 0, consistency)
+        cax = sub.imshow(maskedconsistency, cmap=self.cmap, interpolation='nearest', vmin = 0, origin='lower')
+        cb = fig.colorbar(cax)
+        self.setticks(3, n.size(consistency,0), sub)
+        sub.set_title('standard deviation')
+
+    def plot(self):
+        self.log.debug("plot")
+
+        mp.rcParams.update({'font.size': 15})
 
         # set colormap
-        self.cmap = ppl.get_cmap('jet')
+        self.cmap = plt.get_cmap('jet')
         self.cmap.set_bad(color='grey', alpha=0.25)
 
-        # scale for ISO Ax
-        figscale = sqrt(2)
-        # A4: 210 mm width
-        # 1 millimeter = 0.0393700787 inch
-        mmtoin = 0.0393700787
-        figwa4 = 210*mmtoin
-        figha4 = figwa4*figscale
-        fig1 = ppl.figure(figsize=(figwa4, figha4))
-        fig1.show()
+        fig1 = plt.figure(figsize=(32,18), dpi=60)
 
-        def shrink(rec, s=None):
-            if not s:
-                s = 0.1
-            l, b, w, h = rec
+        gs1 = gridspec.GridSpec(1, 1)
+        gs1.update(left=0.02, right=0.54, wspace=0.05)
 
-            nl = l+w*s/2
-            nb = b+h*s/2
-            nw = (1-s)*w
-            nh = (1-s)*h
+        vextrema = self.addlatency(self.data, plt.subplot(gs1[:, :]), fig1)
 
-            ans = [nl, nb, nw, nh]
-            return ans
+        gs2 = gridspec.GridSpec(7, 3)
+        gs2.update(left=0.55, right=0.98, wspace=0.1, hspace=0.4)
 
-        texth = 0.1
-        subtext = fig1.add_axes(shrink([0, 1-texth, 1, texth]))
-        self.addtext(meta, subtext, fig1)
+        ax3 = plt.subplot(gs2[0:1, :])
+        self.addtext(self.meta, ax3, fig1)
 
-        datah = 1/figscale
-        subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        vextrema = self.addlatency(data, subdata, fig1)
-
-        histw = 0.7
-        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
-        self.addhistogram(data, subhist, fig1, vextrema)
-
-        subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
-        self.addsamplesize(count, subcount, fig1)
+        ax4 = plt.subplot(gs2[1:3, :])
+        self.addhistogram(self.data, ax4, fig1, vextrema)
+        ax5 = plt.subplot(gs2[3:5, 0])
+        self.addsamplesize(self.count, ax5, fig1)
+        ax6 = plt.subplot(gs2[3:5, 1])
+        self.addconsistency(self.consistency, ax6, fig1)
 
         fig1.canvas.draw()
 
-        ppl.show()
+        plt.show()
 
 
 if __name__ == '__main__':

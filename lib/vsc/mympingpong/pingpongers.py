@@ -102,10 +102,7 @@ class PingPongSR(object):
             self.run2(self.rcvbuf, self.other, self.tag2)
             self.end[x] = MPI.Wtime()
 
-        avg = n.average((self.end-self.start)/(2.0*group))
-
-        return avg
-
+        return n.average((self.end-self.start)/(2.0*group))
 
 class PingPongRS(PingPongSR):
     """standard pingpong"""
@@ -161,9 +158,7 @@ class PingPongSRfast(PingPongSR):
             self.start[x] = start
             self.end[x] = end
 
-        avg = n.average((self.end-self.start) / (2.0*group))
-
-        return avg
+        return n.average((self.end-self.start)/(2.0*group))
 
 
 class PingPongRSfast(PingPongSRfast):
