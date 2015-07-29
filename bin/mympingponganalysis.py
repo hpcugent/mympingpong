@@ -122,11 +122,11 @@ class PingPongAnalysis(object):
         """make and show the main latency graph"""
         maskeddata = n.ma.masked_equal(data, 0)
 
-        if self.latencymask[0] is not None and self.latencymask[1] is not None:
+        if self.latencymask != (None,None):
             maskeddata = n.ma.masked_outside(maskeddata, self.latencymask[0], self.latencymask[1])
 
-        vmin = self.latencyscale[0] if self.latencyscale[0] is not None else maskeddata.min()
-        vmax = self.latencyscale[1] if self.latencyscale[1] is not None else maskeddata.max()
+        vmin = maskeddata.min() if self.latencyscale[0] is None else self.latencyscale[0]
+        vmax = maskeddata.max() if self.latencyscale[1] is None else self.latencyscale[1]
 
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
         fig.colorbar(cax)
@@ -149,48 +149,43 @@ class PingPongAnalysis(object):
 
         # We don't want the very first binedge
         binedges = binedges[1:]
-
         lscale = self.latencyscale
         lmask = self.latencymask
+        bisect_edges = lambda x: bisect.bisect(binedges, x)
+        vmin_ind, vmax_ind = map(bisect_edges, vextrema)
+        colorrange = vmax_ind-vmin_ind
 
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if the bin is masked or falls outside the cmap interval it is colored grey.
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
-        vmin_ind = bisect.bisect(binedges,vextrema[0])
-        vmax_ind = bisect.bisect(binedges,vextrema[1])
-        colorrange = vmax_ind-vmin_ind
-
         colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(bins-vmax_ind)
 
-        if lscale[0] is not None or lscale[1] is not None:
-
-            begin = lmask[0] if lmask[0] else 0
-            end = lmask[1] if lmask[1] else binedges[-1]
+        if lscale != (None,None):
+            begin = 0 if lmask[0] is None else lmask[0]
+            end = binedges[-1] if lmask[1] is None else lmask[1]
             self.log.debug("got beginning and end: %s, %s",begin,end)
+            lscale0_ind, lscale1_ind = map(bisect_edges, lscale)
 
             if begin < lscale[0]:
                 begin_ind = bisect.bisect(binedges,begin)                
-                lscale0_ind = bisect.bisect(binedges,lscale[0])
                 colors = self.overwritecolors(self.cmap(0), colors, begin_ind, lscale0_ind )
             if lscale[1] < end:
                 end_ind = bisect.bisect(binedges,end)
-                lscale1_ind = bisect.bisect(binedges,lscale[1])
                 colors = self.overwritecolors(self.cmap(1.0), colors, lscale1_ind, end_ind )
 
-        if lmask[0] is not None or lmask[1] is not None:
+        if lmask != (None,None):
+            lmask0_ind, lmask1_ind = map(bisect_edges, lmask)
             if lmask[0] > vextrema[0]:
-                lmask0_ind = bisect.bisect(binedges,lmask[0])
                 colors = self.overwritecolors(defaultcolor, colors, end=lmask0_ind)
             if vextrema[1] > lmask[1]:
-                lmask1_ind = bisect.bisect(binedges,lmask[1])
                 colors = self.overwritecolors(defaultcolor, colors, begin=lmask1_ind)
  
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
 
-    def overwritecolors(self, color, colors, begin=0.0, end=float('inf')):
+    def overwritecolors(self, color, colors, begin=0, end=sys.maxint):
         """will overwrite all elements in the colors array in interval [begin,end] with color"""
-        self.log.debug("overwriting %s to %s with %s",begin,end,color)
+        self.log.debug("overwriting %s to %s with %s", begin, end, color)
         return [color if i>=begin and i<end else c for i,c in enumerate(colors)]    
 
     def addsamplesize(self, count, sub, fig):
