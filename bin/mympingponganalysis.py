@@ -118,12 +118,15 @@ class PingPongAnalysis(object):
                 sub.text(left+c*width/cols, bottom+r*height/(nrmeta/cols), "%s: %s%s" %
                          (m, val, unit), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
-    def addlatency(self, data, sub, fig, latencymask):
+    def addlatency(self, data, sub, fig):
         """make and show the main latency graph"""
-        maskeddata = n.ma.masked_outside(n.ma.masked_equal(data, 0), latencymask[0], latencymask[1])
+        maskeddata = n.ma.masked_equal(data, 0)
 
-        vmin = self.latencyscale[0] if self.latencyscale[0] else maskeddata.min()
-        vmax = self.latencyscale[1] if self.latencyscale[1] else maskeddata.max()
+        if self.latencymask[0] is not None and self.latencymask[1] is not None:
+            maskeddata = n.ma.masked_outside(maskeddata, self.latencymask[0], self.latencymask[1])
+
+        vmin = self.latencyscale[0] if self.latencyscale[0] is not None else maskeddata.min()
+        vmax = self.latencyscale[1] if self.latencyscale[1] is not None else maskeddata.max()
 
         cax = sub.imshow(maskeddata, cmap=self.cmap, interpolation='nearest', vmin=vmin, vmax=vmax)
         fig.colorbar(cax)
@@ -134,10 +137,11 @@ class PingPongAnalysis(object):
 
         return vmin, vmax
 
-    def addhistogram(self, data, sub, fig1, vmin, vmax):
+    def addhistogram(self, data, sub, fig1, vextrema):
         """make and show the histogram"""
 
         bins = 50 #amount of bins in the histogram. 50 is a good default
+        defaultcolor = (0.5,0.5,0.5,1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
@@ -149,43 +153,45 @@ class PingPongAnalysis(object):
         lscale = self.latencyscale
         lmask = self.latencymask
 
-        lscale0_ind = bisect.bisect(binedges,lscale[0])
-        lscale1_ind = bisect.bisect(binedges,lscale[1])
-        lmask0_ind = bisect.bisect(binedges,lmask[0])
-        lmask1_ind = bisect.bisect(binedges,lmask[1])
-        vmin_ind = bisect.bisect(binedges,vmin)
-        vmax_ind = bisect.bisect(binedges,vmax)
-
-        self.log.debug("got indices: lscale0: %s, lscale1: %s, lmask0: %s, lmask1: %s, vmin: %s, vmax: %s", lscale0_ind, lscale1_ind, lmask0_ind, lmask1_ind, vmin_ind, vmax_ind)
-
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if the bin is masked or falls outside the cmap interval it is colored grey.
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
-        colors = [(0.5,0.5,0.5,1)]*bins
+        vmin_ind = bisect.bisect(binedges,vextrema[0])
+        vmax_ind = bisect.bisect(binedges,vextrema[1])
+        colorrange = vmax_ind-vmin_ind
 
-        for i in range(vmax_ind-vmin_ind):
-            colors[vmin_ind + i] = self.cmap(1.*i/(vmax_ind-vmin_ind))
+        colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(bins-vmax_ind)
 
-        if lscale[0] or lscale[1]:
+        if lscale[0] is not None or lscale[1] is not None:
+
             begin = lmask[0] if lmask[0] else 0
-            begin_ind = bisect.bisect(binedges,begin)
-            end = lmask[1] if lmask[1] < float('inf') else binedges[-1]
-            end_ind = bisect.bisect(binedges,end)
+            end = lmask[1] if lmask[1] else binedges[-1]
             self.log.debug("got beginning and end: %s, %s",begin,end)
 
             if begin < lscale[0]:
-                colors = [self.cmap(0) if i>=begin_ind and i<lscale0_ind else c for i,c in enumerate(colors)]
+                begin_ind = bisect.bisect(binedges,begin)                
+                lscale0_ind = bisect.bisect(binedges,lscale[0])
+                colors = self.overwritecolors(self.cmap(0), colors, begin_ind, lscale0_ind )
             if lscale[1] < end:
-                colors = [self.cmap(1.0) if i>=lscale1_ind and i<end_ind else c for i,c in enumerate(colors)]
+                end_ind = bisect.bisect(binedges,end)
+                lscale1_ind = bisect.bisect(binedges,lscale[1])
+                colors = self.overwritecolors(self.cmap(1.0), colors, lscale1_ind, end_ind )
 
-        if lmask[0] or lmask[1] < float('inf'):
-            if lmask[0] > vmin:
-                colors = [(0.5,0.5,0.5,1) if i<lmask0_ind else c for i,c in enumerate(colors)]
-            if vmax > lmask[1]:
-                colors = [(0.5,0.5,0.5,1) if i>=lmask1_ind else c for i,c in enumerate(colors)]
+        if lmask[0] is not None or lmask[1] is not None:
+            if lmask[0] > vextrema[0]:
+                lmask0_ind = bisect.bisect(binedges,lmask[0])
+                colors = self.overwritecolors(defaultcolor, colors, end=lmask0_ind)
+            if vextrema[1] > lmask[1]:
+                lmask1_ind = bisect.bisect(binedges,lmask[1])
+                colors = self.overwritecolors(defaultcolor, colors, begin=lmask1_ind)
  
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
+
+    def overwritecolors(self, color, colors, begin=0.0, end=float('inf')):
+        """will overwrite all elements in the colors array in interval [begin,end] with color"""
+        self.log.debug("overwriting %s to %s with %s",begin,end,color)
+        return [color if i>=begin and i<end else c for i,c in enumerate(colors)]    
 
     def addsamplesize(self, count, sub, fig):
         self.log.debug("add a sample size graph to the plot")
@@ -244,11 +250,11 @@ class PingPongAnalysis(object):
 
         datah = 1/figscale
         subdata = fig1.add_axes(shrink([0, 1-texth-datah, 1, datah]))
-        vmin, vmax = self.addlatency(data, subdata, fig1, self.latencymask)
+        vextrema = self.addlatency(data, subdata, fig1)
 
         histw = 0.7
-        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3), vmin, vmax)
-        self.addhistogram(data, subhist, fig1, vmin, vmax)
+        subhist = fig1.add_axes(shrink([0, 0, histw, 1-datah-texth], 0.3))
+        self.addhistogram(data, subhist, fig1, vextrema)
 
         subcount = fig1.add_axes(shrink([1-histw, 0, histw, 1-datah-texth], 0.3))
         self.addsamplesize(count, subcount, fig1)
@@ -264,26 +270,19 @@ if __name__ == '__main__':
     options = {
         'input': ('set the inputfile', str, 'store', 'test2', 'f'),
         'latencyscale': ('set the minimum and maximum of the latency graph colorscheme',
-             'strtuple', 'store', ('0','0'), 's'
+             'strtuple', 'store', None, 's'
              ),
         'latencymask': ('set the interval of the data that should be plotted in the latency graph, so'
             'any datapoints that falls outside this interval will not be plotted. The colorscheme min and max'
             'will correspond to respectively the lowest and highest value in the remaining data-array',
-            'strtuple', 'store', ('0','inf'), 'm'
+            'strtuple', 'store', None, 'm'
             ),
     }
 
     go = simple_option(options)
 
-    lscale = (
-        float(go.options.latencyscale[0]),
-        float(go.options.latencyscale[1]),
-        )
-
-    lmask = (
-        float(go.options.latencymask[0]),
-        float(go.options.latencymask[1]),
-        ) 
+    lscale = map(float, go.options.latencyscale) if go.options.latencyscale else (None,None)
+    lmask = map(float, go.options.latencymask) if go.options.latencymask else (None,None)
 
     ppa = PingPongAnalysis(go.log, lscale, lmask)
     ppa.collecthdf5(go.options.input)
