@@ -224,7 +224,7 @@ class PingPongAnalysis(object):
         sub.set_title('standard deviation')
 
 
-    def plot(self, latencymask):
+    def plot(self):
         self.log.debug("plot")
 
         mp.rcParams.update({'font.size': 15})
@@ -238,7 +238,7 @@ class PingPongAnalysis(object):
         gs1 = gridspec.GridSpec(1, 1)
         gs1.update(left=0.02, right=0.54, wspace=0.05)
 
-        vmin, vmax = self.addlatency(self.data, plt.subplot(gs1[:, :]), fig1, latencymask)
+        vextrema = self.addlatency(self.data, plt.subplot(gs1[:, :]), fig1)
 
         gs2 = gridspec.GridSpec(7, 3)
         gs2.update(left=0.55, right=0.98, wspace=0.1, hspace=0.4)
@@ -247,7 +247,7 @@ class PingPongAnalysis(object):
         self.addtext(self.meta, ax3, fig1)
 
         ax4 = plt.subplot(gs2[1:3, :])
-        self.addhistogram(self.data, ax4, fig1, vmin, vmax)
+        self.addhistogram(self.data, ax4, fig1, vextrema)
         ax5 = plt.subplot(gs2[3:5, 0])
         self.addsamplesize(self.count, ax5, fig1)
         ax6 = plt.subplot(gs2[3:5, 1])
