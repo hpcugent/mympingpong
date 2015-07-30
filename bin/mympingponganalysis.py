@@ -49,7 +49,7 @@ from vsc.utils.generaloption import simple_option
 
 class PingPongAnalysis(object):
 
-    def __init__(self, logger, latencyscale, latencymask):
+    def __init__(self, logger, latencyscale, latencymask, bins):
         self.log = logger
 
         self.data = None
@@ -66,6 +66,7 @@ class PingPongAnalysis(object):
 
         self.latencyscale = latencyscale
         self.latencymask = latencymask
+        self.bins = bins
 
 
     def collecthdf5(self, fn):
@@ -152,12 +153,11 @@ class PingPongAnalysis(object):
     def addglobalhistogram(self, data, sub, fig1, vextrema):
         """make and show the histogram"""
 
-        bins = 100 #amount of bins in the histogram. 100 is a good default
         defaultcolor = (0.5,0.5,0.5,1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
-        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=bins)
+        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
 
         # We don't want the very first binedge
         binedges = binedges[1:]
@@ -170,7 +170,7 @@ class PingPongAnalysis(object):
         # create an array of cmapvalues for every bin according to its corresponding cmapvalue from the latency graph
         # if the bin falls outside the mask interval it is colored grey.
         # if the bin falls outside the scale interval, color it dark blue or dark red instead
-        colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(bins-vmax_ind)
+        colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(self.bins-vmax_ind)
 
         if lscale != (None,None):
             coloredges = (0, binedges[-1]) if lmask == (None,None) else (lmask[0], lmask[1])
@@ -190,7 +190,7 @@ class PingPongAnalysis(object):
             if vextrema[1] > lmask[1]:
                 colors = self.overwritecolors(defaultcolor, colors, begin=lmask1_ind)
         
-        # apply collorarray to the bins
+        # apply colorarray to the bins
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
 
@@ -214,19 +214,17 @@ class PingPongAnalysis(object):
     def addmaskedhistogram(self, data, sub, fig1, coloredges):
         """make and show the masked histogram"""
 
-        bins = 100 #amount of bins in the histogram. 100 is a good default
-
         # filter out zeros and the data that falls outside of the mask interval
         d = n.ma.masked_outside(n.ma.masked_equal(data.ravel(), 0),self.latencymask[0], self.latencymask[1])
-        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=bins)
+        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
 
-        binwidth = (coloredges[1]-coloredges[0]) / bins
+        binwidth = (coloredges[1]-coloredges[0]) / self.bins
         self.log.debug("binwidth: %s, color edge 0: %s, color edge 1: %s", binwidth, coloredges[0], coloredges[1])
 
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
         colors = []
-        for i in range(bins):
+        for i in range(self.bins):
             colors.append(coloredges[0] + i * binwidth)
 
         self.log.debug('made cmapvalues: %s', colors)
@@ -255,13 +253,13 @@ class PingPongAnalysis(object):
         self.setticks(3, n.size(consistency,0), sub)
         sub.set_title('standard deviation')
 
-    def plot(self):
+    def plot(self, colormap):
         self.log.debug("plot")
 
         mp.rcParams.update({'font.size': 15})
 
         # set colormap
-        self.cmap = plt.get_cmap('jet')
+        self.cmap = plt.get_cmap(colormap)
         self.cmap.set_bad(color='grey', alpha=0.25)
 
         fig1 = plt.figure(figsize=(32,18), dpi=60)
@@ -301,6 +299,8 @@ if __name__ == '__main__':
             'will correspond to respectively the lowest and highest value in the remaining data-array',
             'strtuple', 'store', None, 'm'
             ),
+        'bins': ('set the amount of bins in the histograms', 'int', 'store', 100, 'b'),
+        'colormap': ('set the colormap, for a list of options see http://matplotlib.org/users/colormaps.html', 'string', 'store', 'jet', 'c'),
     }
 
     go = simple_option(options)
@@ -308,7 +308,7 @@ if __name__ == '__main__':
     lscale = map(float, go.options.latencyscale) if go.options.latencyscale else (None,None)
     lmask = map(float, go.options.latencymask) if go.options.latencymask else (None,None)
 
-    ppa = PingPongAnalysis(go.log, lscale, lmask)
+    ppa = PingPongAnalysis(go.log, lscale, lmask, go.options.bins)
     ppa.collecthdf5(go.options.input)
 
-    ppa.plot()
+    ppa.plot(go.options.colormap)
