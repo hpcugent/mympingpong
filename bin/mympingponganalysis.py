@@ -152,7 +152,7 @@ class PingPongAnalysis(object):
     def addglobalhistogram(self, data, sub, fig1, vextrema):
         """make and show the histogram"""
 
-        bins = 100 #amount of bins in the histogram. 50 is a good default
+        bins = 100 #amount of bins in the histogram. 100 is a good default
         defaultcolor = (0.5,0.5,0.5,1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
@@ -167,16 +167,15 @@ class PingPongAnalysis(object):
         vmin_ind, vmax_ind = map(bisect_edges, vextrema)
         colorrange = vmax_ind-vmin_ind
 
-        # color every bin according to its corresponding cmapvalue from the latency graph
-        # if the bin is masked or falls outside the cmap interval it is colored grey.
-        # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
+        # create an array of cmapvalues for every bin according to its corresponding cmapvalue from the latency graph
+        # if the bin falls outside the mask interval it is colored grey.
+        # if the bin falls outside the scale interval, color it dark blue or dark red instead
         colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(bins-vmax_ind)
 
         if lscale != (None,None):
             coloredges = (0, binedges[-1]) if lmask == (None,None) else (lmask[0], lmask[1])
             begin_ind, end_ind = map(bisect_edges, coloredges)
             lscale0_ind, lscale1_ind = map(bisect_edges, lscale)
-
             if coloredges[0] < lscale[0]:
                 begin_ind = bisect.bisect(binedges,coloredges[0])                
                 colors = self.overwritecolors(self.cmap(0), colors, begin_ind, lscale0_ind )
@@ -190,34 +189,36 @@ class PingPongAnalysis(object):
                 colors = self.overwritecolors(defaultcolor, colors, end=lmask0_ind)
             if vextrema[1] > lmask[1]:
                 colors = self.overwritecolors(defaultcolor, colors, begin=lmask1_ind)
- 
+        
+        # apply collorarray to the bins
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
 
-        sub.set_title('Global histogram')
+        sub.set_title('Histogram of latency data')
         
-        if lscale != (None,None):
+        # get the cmapvalue of the color edges (on a scale from 0.0 to 1.0)
+        if lscale != (None,None) and lmask != (None,None):
             coloredges = float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind)
             if lscale1_ind-lscale0_ind != 0:
                 coloredges = tuple([x/(lscale1_ind-lscale0_ind) for x in coloredges])
         else:
             coloredges = (0.0,1.0)
-            
+
         return coloredges
 
+    def overwritecolors(self, color, colors, begin=0, end=sys.maxint):
+        """will overwrite all elements in the colors array in interval [begin,end] with color"""
+        self.log.debug("overwriting %s to %s with %s", begin, end, color)
+        return [color if i>=begin and i<end else c for i,c in enumerate(colors)]    
+        
     def addmaskedhistogram(self, data, sub, fig1, coloredges):
         """make and show the masked histogram"""
 
-        bins = 100 #amount of bins in the histogram. 50 is a good default
+        bins = 100 #amount of bins in the histogram. 100 is a good default
 
-        # filter out zeros and data that is too small or too large to show with the selected scaling
+        # filter out zeros and the data that falls outside of the mask interval
         d = n.ma.masked_outside(n.ma.masked_equal(data.ravel(), 0),self.latencymask[0], self.latencymask[1])
-        d = n.ma.compressed(d)
-        (nn, binedges, patches) = sub.hist(d, bins=bins)
-        self.log.debug("data for masked histogram: %s, min: %s, max: %s", d, d.min(), d.max())
-
-        # We don't want the very first binedge
-        binedges = binedges[1:]
+        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=bins)
 
         binwidth = (coloredges[1]-coloredges[0]) / bins
         self.log.debug("binwidth: %s, color edge 0: %s, color edge 1: %s", binwidth, coloredges[0], coloredges[1])
@@ -225,23 +226,16 @@ class PingPongAnalysis(object):
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
         colors = []
-        if self.latencyscale != (0,0):
-            for i in range(bins):
-                colors.append(self.cmap(coloredges[0] + i * binwidth))
-                self.log.debug("cmapval: %s", (coloredges[0] + i * binwidth))
-        else:
-            for i in range(bins):
-                colors.append(self.cmap(float(i)/bins))
+        for i in range(bins):
+            colors.append(coloredges[0] + i * binwidth)
 
+        self.log.debug('made cmapvalues: %s', colors)
+
+        # apply collorarray to the bins
         for color, patch in zip(colors,patches):
-            patch.set_facecolor(color)
+            patch.set_facecolor(self.cmap(color))
 
-        sub.set_title("histogram of latency")
-
-    def overwritecolors(self, color, colors, begin=0, end=sys.maxint):
-        """will overwrite all elements in the colors array in interval [begin,end] with color"""
-        self.log.debug("overwriting %s to %s with %s", begin, end, color)
-        return [color if i>=begin and i<end else c for i,c in enumerate(colors)]    
+        sub.set_title("Histogram of latency data in mask")
 
     def addsamplesize(self, count, sub, fig):
         self.log.debug("add a sample size graph to the plot")
