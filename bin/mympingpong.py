@@ -285,7 +285,7 @@ class MyPingPong(object):
             if barrier:
                 self.comm.barrier()
 
-            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend, it=it)
+            timingdata, pmodedetails = self.pingpong(pair[0], pair[1],  runid=runid, nr=nr, pmode=pmode, dat=dattosend, it=it)
 
             if barrier2:
                 self.comm.barrier()
@@ -325,7 +325,7 @@ class MyPingPong(object):
         self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
-    def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
+    def pingpong(self, p1, p2, runid, nr, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
         """
         Pingpong between pairs
 
@@ -374,7 +374,7 @@ class MyPingPong(object):
             pp.dopingpong(1)
 
         timingdata = pp.dopingpong(it)
-        self.log.debug("%s->%s", p1, p2)
+        self.log.info("run %s/%s (%s%%), %s->%s", (runid*self.size)+self.rank, nr*self.size, int(float(runid)*100/nr), p1, p2)
 
         details = {
             'ppgroup': pp.group,
