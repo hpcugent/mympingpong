@@ -43,9 +43,10 @@ import matplotlib.gridspec as gridspec
 import numpy as n
 from matplotlib.colorbar import Colorbar, make_axes
 
-
 from vsc.utils.generaloption import simple_option
 
+
+notset = (None,None)
 
 class PingPongAnalysis(object):
 
@@ -137,7 +138,7 @@ class PingPongAnalysis(object):
         """make and show the main latency graph"""
         maskeddata = n.ma.masked_equal(data, 0)
 
-        if self.latencymask != (None,None):
+        if self.latencymask != notset:
             maskeddata = n.ma.masked_outside(maskeddata, self.latencymask[0], self.latencymask[1])
 
         vmin = maskeddata.min() if self.latencyscale[0] is None else self.latencyscale[0]
@@ -172,8 +173,8 @@ class PingPongAnalysis(object):
         # if the bin falls outside the scale interval, color it dark blue or dark red instead
         colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(self.bins-vmax_ind)
 
-        if lscale != (None,None):
-            coloredges = (0, binedges[-1]) if lmask == (None,None) else (lmask[0], lmask[1])
+        if lscale != notset:
+            coloredges = (0, binedges[-1]) if lmask == notset else (lmask[0], lmask[1])
             begin_ind, end_ind = map(bisect_edges, coloredges)
             lscale0_ind, lscale1_ind = map(bisect_edges, lscale)
             if coloredges[0] < lscale[0]:
@@ -183,7 +184,7 @@ class PingPongAnalysis(object):
                 end_ind = bisect.bisect(binedges,coloredges[1])
                 colors = self.overwritecolors(self.cmap(1.0), colors, lscale1_ind, end_ind )
 
-        if lmask != (None,None):
+        if lmask != notset:
             lmask0_ind, lmask1_ind = map(bisect_edges, lmask)
             if lmask[0] > vextrema[0]:
                 colors = self.overwritecolors(defaultcolor, colors, end=lmask0_ind)
@@ -197,9 +198,9 @@ class PingPongAnalysis(object):
         sub.set_title('Histogram of latency data')
         
         # get the cmapvalue of the color edges (on a scale from 0.0 to 1.0)
-        if lscale != (None,None) and lmask != (None,None):
-            coloredges = float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind)
-            if lscale1_ind-lscale0_ind != 0:
+        if lscale != notset and lmask != notset:
+            coloredges = (float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind))
+            if lscale1_ind != lscale0_ind
                 coloredges = tuple([x/(lscale1_ind-lscale0_ind) for x in coloredges])
         else:
             coloredges = (0.0,1.0)
@@ -223,10 +224,7 @@ class PingPongAnalysis(object):
 
         # color every bin according to its corresponding cmapvalue from the latency graph
         # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
-        colors = []
-        for i in range(self.bins):
-            colors.append(coloredges[0] + i * binwidth)
-
+        colors = [coloredges[0] + i * binwidth for i in range(self.bins)] 
         self.log.debug('made cmapvalues: %s', colors)
 
         # apply collorarray to the bins
@@ -277,7 +275,7 @@ class PingPongAnalysis(object):
         self.addsamplesize(self.count, ax5, fig1)
         ax6 = plt.subplot(gs1[1:4, 7:9])
         self.addconsistency(self.consistency, ax6, fig1)
-        if self.latencymask != (None,None):
+        if self.latencymask != notset:
             ax7 = plt.subplot(gs1[8:10, 5:9])
             self.addmaskedhistogram(self.data, ax7, fig1, coloredges)
 
@@ -305,8 +303,8 @@ if __name__ == '__main__':
 
     go = simple_option(options)
 
-    lscale = map(float, go.options.latencyscale) if go.options.latencyscale else (None,None)
-    lmask = map(float, go.options.latencymask) if go.options.latencymask else (None,None)
+    lscale = map(float, go.options.latencyscale) if go.options.latencyscale else notset
+    lmask = map(float, go.options.latencymask) if go.options.latencymask else notset
 
     ppa = PingPongAnalysis(go.log, lscale, lmask, go.options.bins)
     ppa.collecthdf5(go.options.input)
