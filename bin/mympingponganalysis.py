@@ -149,10 +149,10 @@ class PingPongAnalysis(object):
 
         return vmin, vmax
 
-    def addhistogram(self, data, sub, fig1, vextrema):
+    def addglobalhistogram(self, data, sub, fig1, vextrema):
         """make and show the histogram"""
 
-        bins = 50 #amount of bins in the histogram. 50 is a good default
+        bins = 100 #amount of bins in the histogram. 50 is a good default
         defaultcolor = (0.5,0.5,0.5,1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
@@ -194,6 +194,50 @@ class PingPongAnalysis(object):
         for color, patch in zip(colors,patches):
             patch.set_facecolor(color)
 
+        sub.set_title('Global histogram')
+        
+        if lscale != (None,None):
+            coloredges = float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind)
+            if lscale1_ind-lscale0_ind != 0:
+                coloredges = tuple([x/(lscale1_ind-lscale0_ind) for x in coloredges])
+        else:
+            coloredges = (0.0,1.0)
+            
+        return coloredges
+
+    def addmaskedhistogram(self, data, sub, fig1, coloredges):
+        """make and show the masked histogram"""
+
+        bins = 100 #amount of bins in the histogram. 50 is a good default
+
+        # filter out zeros and data that is too small or too large to show with the selected scaling
+        d = n.ma.masked_outside(n.ma.masked_equal(data.ravel(), 0),self.latencymask[0], self.latencymask[1])
+        d = n.ma.compressed(d)
+        (nn, binedges, patches) = sub.hist(d, bins=bins)
+        self.log.debug("data for masked histogram: %s, min: %s, max: %s", d, d.min(), d.max())
+
+        # We don't want the very first binedge
+        binedges = binedges[1:]
+
+        binwidth = (coloredges[1]-coloredges[0]) / bins
+        self.log.debug("binwidth: %s, color edge 0: %s, color edge 1: %s", binwidth, coloredges[0], coloredges[1])
+
+        # color every bin according to its corresponding cmapvalue from the latency graph
+        # if latencyscale has been set, color the bins outside the interval with their corresponding colors instead
+        colors = []
+        if self.latencyscale != (0,0):
+            for i in range(bins):
+                colors.append(self.cmap(coloredges[0] + i * binwidth))
+                self.log.debug("cmapval: %s", (coloredges[0] + i * binwidth))
+        else:
+            for i in range(bins):
+                colors.append(self.cmap(float(i)/bins))
+
+        for color, patch in zip(colors,patches):
+            patch.set_facecolor(color)
+
+        sub.set_title("histogram of latency")
+
     def overwritecolors(self, color, colors, begin=0, end=sys.maxint):
         """will overwrite all elements in the colors array in interval [begin,end] with color"""
         self.log.debug("overwriting %s to %s with %s", begin, end, color)
@@ -228,21 +272,22 @@ class PingPongAnalysis(object):
 
         fig1 = plt.figure(figsize=(32,18), dpi=60)
 
-        gs1 = gridspec.GridSpec(10, 10, left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.05, hspace=0.4)
+        gs1 = gridspec.GridSpec(10, 10, left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.05, hspace=0.6)
 
         ax1 = plt.subplot(gs1[0:8, 0:5])
         vextrema = self.addlatency(self.data, ax1, fig1)
         ax4 = plt.subplot(gs1[8:10, 0:4])
-        self.addhistogram(self.data, ax4, fig1, vextrema)
+        coloredges = self.addglobalhistogram(self.data, ax4, fig1, vextrema)
 
         ax3 = plt.subplot(gs1[0:1, 5:10])
         self.addtext(self.meta, ax3, fig1)
-        ax5 = plt.subplot(gs1[3:5, 5:7])
+        ax5 = plt.subplot(gs1[1:4, 5:7])
         self.addsamplesize(self.count, ax5, fig1)
-        ax6 = plt.subplot(gs1[3:5, 7:9])
+        ax6 = plt.subplot(gs1[1:4, 7:9])
         self.addconsistency(self.consistency, ax6, fig1)
-        ax7 = plt.subplot(gs1[8:10, 5:9])
-        self.addhistogram(self.data, ax7, fig1, vextrema)
+        if self.latencymask != (None,None):
+            ax7 = plt.subplot(gs1[8:10, 5:9])
+            self.addmaskedhistogram(self.data, ax7, fig1, coloredges)
 
         fig1.canvas.draw()
 
