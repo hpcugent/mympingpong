@@ -382,7 +382,7 @@ class MyPingPong(object):
         if log and runid % (self.nr/100) == 0:
             progress = int(float(runid)*100/self.nr)
             hashes = progress/5
-            sys.stdout.write("\r [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
+            sys.stdout.write("\r running tests: [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
             sys.stdout.flush()        
 
         details = {
