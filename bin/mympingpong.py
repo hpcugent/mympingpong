@@ -285,7 +285,7 @@ class MyPingPong(object):
             if barrier:
                 self.comm.barrier()
 
-            timingdata, pmodedetails = self.pingpong(pair[0], pair[1],  runid=runid, nr=nr, pmode=pmode, dat=dattosend, it=it)
+            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, nr, pmode=pmode, dat=dattosend, it=it)
 
             if barrier2:
                 self.comm.barrier()
