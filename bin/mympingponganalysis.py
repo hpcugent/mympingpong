@@ -154,7 +154,7 @@ class PingPongAnalysis(object):
     def addglobalhistogram(self, data, sub, fig1, vextrema):
         """make and show the histogram"""
 
-        defaultcolor = (0.5,0.5,0.5,1)
+        DEFAULTCOLOR = (0.5,0.5,0.5,1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
         d = n.ma.masked_outside(data.ravel(),1/self.scaling, 1.0*self.scaling)
@@ -171,7 +171,7 @@ class PingPongAnalysis(object):
         # create an array of cmapvalues for every bin according to its corresponding cmapvalue from the latency graph
         # if the bin falls outside the mask interval it is colored grey.
         # if the bin falls outside the scale interval, color it dark blue or dark red instead
-        colors = [defaultcolor]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [defaultcolor]*(self.bins-vmax_ind)
+        colors = [DEFAULTCOLOR]*vmin_ind + [self.cmap(1.*i/colorrange) for i in range(colorrange)] + [DEFAULTCOLOR]*(self.bins-vmax_ind)
 
         if lscale != notset:
             coloredges = (0, binedges[-1]) if lmask == notset else (lmask[0], lmask[1])
@@ -187,9 +187,9 @@ class PingPongAnalysis(object):
         if lmask != notset:
             lmask0_ind, lmask1_ind = map(bisect_edges, lmask)
             if lmask[0] > vextrema[0]:
-                colors = self.overwritecolors(defaultcolor, colors, end=lmask0_ind)
+                colors = self.overwritecolors(DEFAULTCOLOR, colors, end=lmask0_ind)
             if vextrema[1] > lmask[1]:
-                colors = self.overwritecolors(defaultcolor, colors, begin=lmask1_ind)
+                colors = self.overwritecolors(DEFAULTCOLOR, colors, begin=lmask1_ind)
         
         # apply colorarray to the bins
         for color, patch in zip(colors,patches):
