@@ -485,4 +485,4 @@ if __name__ == '__main__':
 
     mpp.runpingpong(go.options.abort_check, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
-    go.log.info("data written to %s/%s", go.options.output, mpp.fn)
+    go.log.info("data written to %s/%s", mpp.fn)
