@@ -240,7 +240,7 @@ class MyPingPong(object):
         fail: a 2D array that contains information on how many times a rank has failed a test
         """
 
-        if not self.nr:
+        if self.nr is None:
             self.nr = int(self.size/2)+1
 
         if not self.pairmode:
@@ -288,7 +288,7 @@ class MyPingPong(object):
             if barrier:
                 self.comm.barrier()
 
-            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, self.rank==0, pmode=pmode, dat=dattosend)
+            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
 
             if barrier2:
                 self.comm.barrier()
@@ -328,7 +328,7 @@ class MyPingPong(object):
         self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
-    def pingpong(self, p1, p2, runid, log, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
+    def pingpong(self, p1, p2, runid, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
         """
         Pingpong between pairs
 
@@ -379,7 +379,7 @@ class MyPingPong(object):
         timingdata = pp.dopingpong(self.it)
 
         # write a progress bar to stdout, but only update it when the percentage changes
-        if log and runid % (self.nr/100) == 0:
+        if self.rank==0, and runid % (self.nr/100) == 0:
             progress = int(float(runid)*100/self.nr)
             hashes = progress/5
             sys.stdout.write("\rRunning tests: [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
