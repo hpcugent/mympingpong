@@ -83,10 +83,10 @@ class MyPingPong(object):
 
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
-        self.log.debug("got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s", self.rank, self.rank, self.rank, self.rank, self.rank, self.rank)
+        self.log.debug("got ABORT on rank %s", self.rank)
         self.abortsignal = True
 
-    def evaluateabort(self, abort):
+    def alltoallabort(self, abort):
         """ notifies all if they can continue or should abort"""
         if abort:
             self.log.debug("aborting on rank %s", self.rank)
@@ -226,7 +226,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
+    def runpingpong(self, disable_abort, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -314,15 +314,18 @@ class MyPingPong(object):
         for runid, pair in enumerate(mypairs):
             self.comm.barrier()
 
-            abort = (maxruntime and (time.time() - start) > maxruntime) or self.abortsignal
-            if self.evaluateabort(abort):
-                self.log.warning("Aborting on rank %s", self.rank)
-                attrs.update({
-                    'nr_tests': runid*self.size,
-                    'aborted': True,
-                })
+            
+            if not disable_abort:
+                abort = (maxruntime and (time.time() - start) > maxruntime) or self.abortsignal
+                if self.alltoallabort(abort):
+                    self.log.warning("Aborting on rank %s", self.rank)
+                    attrs.update({
+                        'nr_tests': runid*self.size,
+                        'aborted': True,
+                    })
 
-                break
+                    break
+            
 
             timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
 
@@ -458,27 +461,35 @@ if __name__ == '__main__':
         'seed': ('set the seed', int, 'store', 2, 's'),
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
+        'disable_abort': ('disable the abort checks', '', 'store_true', False , 'a'),
     }
 
     go = simple_option(options)
 
-    go.log.debug("pid: %s", os.getpid())
+    if go.options.disable_abort is None:
+        go.options.disable_abort = False
 
-    m = MyPingPong(go.log, go.options.iterations, go.options.number)
+    go.log.debug("pid: %s", os.getpid())
+    go.log.debug("abort flag: %s ", go.options.disable_abort)
+    mpp = MyPingPong(go.log, go.options.iterations, go.options.number)
 
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(go.options.output, go.options.messagesize)
+    mpp.setfn(go.options.output, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
-        m.setpairmode(rngfilter=go.options.groupmode)
+        mpp.setpairmode(rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'groupexcl':
-        m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
+        mpp.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'hwloc':
         # no rngfilter needed (hardcoded to incl)
-        m.setpairmode(pairmode=go.options.groupmode)
+        mpp.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+    mpp.runpingpong(go.options.disable_abort, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", go.options.output)
+
+    if mpp.rank == 0:
+        cmd = "h5dump %s" % mpp.fn
+        ec, txt = run_simple(cmd)
