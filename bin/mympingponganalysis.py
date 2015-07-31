@@ -200,7 +200,7 @@ class PingPongAnalysis(object):
         # get the cmapvalue of the color edges (on a scale from 0.0 to 1.0)
         if lscale != INTERVAL_NONE and lmask != INTERVAL_NONE:
             coloredges = (float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind))
-            if lscale1_ind != lscale0_ind
+            if lscale1_ind != lscale0_ind:
                 coloredges = tuple([x/(lscale1_ind-lscale0_ind) for x in coloredges])
         else:
             coloredges = (0.0,1.0)
