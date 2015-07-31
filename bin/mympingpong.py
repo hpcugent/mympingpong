@@ -382,7 +382,7 @@ class MyPingPong(object):
         if self.rank==0 and runid % (self.nr/100) == 0:
             progress = int(float(runid)*100/self.nr)
             hashes = progress/5
-            self.log.debug("Running tests: [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
+            self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
 
         details = {
             'ppgroup': pp.group,
