@@ -83,13 +83,17 @@ class MyPingPong(object):
 
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
-        self.log.debug("got ABORT on rank %s", self.rank)
+        self.log.warning("received abortsignal on rank %s", self.rank)
         self.abortsignal = True
 
-    def alltoallabort(self, abort):
+    def alltoallabort(self, maxruntime, start):
         """ notifies all if they can continue or should abort"""
-        if abort:
-            self.log.debug("aborting on rank %s", self.rank)
+        abort = self.abortsignal
+
+        if (maxruntime and (time.time() - start) > maxruntime):
+            self.log.warning("maximum runtime was reached on rank %s", self.rank) 
+            abort = True
+
         abortlist = [abort] * self.size
         alltoall = self.comm.alltoall(abortlist)
         return any(alltoall)
@@ -226,7 +230,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, disable_abort, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
+    def runpingpong(self, abort_check, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -309,23 +313,17 @@ class MyPingPong(object):
         pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
 
-
-
         for runid, pair in enumerate(mypairs):
             self.comm.barrier()
 
-            
-            if not disable_abort:
-                abort = (maxruntime and (time.time() - start) > maxruntime) or self.abortsignal
-                if self.alltoallabort(abort):
-                    self.log.warning("Aborting on rank %s", self.rank)
+            if abort_check:
+                if self.alltoallabort(maxruntime, start):
                     attrs.update({
                         'nr_tests': runid*self.size,
                         'aborted': True,
                     })
-
-                    break
-            
+                    break        
+                self.comm.barrier()
 
             timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
 
@@ -355,7 +353,6 @@ class MyPingPong(object):
         if not failed:
             attrs.update(pmodedetails)
 
-        self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
     def pingpong(self, p1, p2, runid, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
@@ -434,7 +431,8 @@ class MyPingPong(object):
 
         for k,v in attributes.items():
             f.attrs[k] = v
-            self.log.debug("added attribute %s: %s to data.attrs", k, v)
+            if self.rank == 0:
+                self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
         dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
         for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
@@ -461,16 +459,15 @@ if __name__ == '__main__':
         'seed': ('set the seed', int, 'store', 2, 's'),
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
-        'disable_abort': ('disable the abort checks', '', 'store_true', False , 'a'),
+        'abort_check': ('if true, check for abort signals or maxruntime', '', 'store_true', True , 'a'),
     }
 
     go = simple_option(options)
 
-    if go.options.disable_abort is None:
-        go.options.disable_abort = False
+    go.log.debug("abort_check flag: %s ", go.options.abort_check)
+    if not go.options.abort_check and maxruntime != 0:
+        self.log.warning("maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
 
-    go.log.debug("pid: %s", os.getpid())
-    go.log.debug("abort flag: %s ", go.options.disable_abort)
     mpp = MyPingPong(go.log, go.options.iterations, go.options.number)
 
     if not os.path.isdir(go.options.output):
@@ -486,10 +483,6 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         mpp.setpairmode(pairmode=go.options.groupmode)
 
-    mpp.runpingpong(go.options.disable_abort, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+    mpp.runpingpong(go.options.abort_check, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
-    go.log.info("data written to %s", go.options.output)
-
-    if mpp.rank == 0:
-        cmd = "h5dump %s" % mpp.fn
-        ec, txt = run_simple(cmd)
+    go.log.info("data written to %s/%s", go.options.output, mpp.fn)
