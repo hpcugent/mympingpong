@@ -459,7 +459,7 @@ if __name__ == '__main__':
         'seed': ('set the seed', int, 'store', 2, 's'),
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
-        'abort_check': ('if true, check for abort signals or maxruntime', '', 'store_true', True , 'a'),
+        'abort_check': ('check for abort signals or maxruntime', '', 'store_true', True , 'a'),
     }
 
     go = simple_option(options)
@@ -485,4 +485,4 @@ if __name__ == '__main__':
 
     mpp.runpingpong(go.options.abort_check, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
-    go.log.info("data written to %s/%s", mpp.fn)
+    go.log.info("data written to %s", mpp.fn)
