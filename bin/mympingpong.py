@@ -42,6 +42,7 @@ import time
 import datetime
 import os
 import re
+import signal
 import sys
 from itertools import permutations
 
@@ -75,6 +76,23 @@ class MyPingPong(object):
         self.nr = num
 
         self.outputfile = None
+
+        self.abortsignal = False
+
+        signal.signal(signal.SIGUSR1, self.abort)
+
+    def abort(self, signum, frame):
+        """intercepts a SIGUSR1 signal."""
+        self.log.debug("got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s got ABORT on rank %s", self.rank, self.rank, self.rank, self.rank, self.rank, self.rank)
+        self.abortsignal = True
+
+    def evaluateabort(self, abort):
+        """ notifies all if they can continue or should abort"""
+        if abort:
+            self.log.debug("aborting on rank %s", self.rank)
+        abortlist = [abort] * self.size
+        alltoall = self.comm.alltoall(abortlist)
+        return any(alltoall)
 
     def setfn(self, directory, msg, remove=True):
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -281,17 +299,14 @@ class MyPingPong(object):
         pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
         for runid, pair in enumerate(mypairs):
-            if maxruntime and (time.time() - start) > maxruntime:
-                self.log.info("Maximum runtime %s reached", maxruntime)
+            self.comm.barrier()
+
+            abort = (maxruntime and (time.time() - start) > maxruntime) or self.abortsignal
+            if self.evaluateabort(abort):
+                self.log.warning("Aborting on rank %s", self.rank)
                 break
 
-            if barrier:
-                self.comm.barrier()
-
             timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
-
-            if barrier2:
-                self.comm.barrier()
 
             key = tuple(pair)
             try:
@@ -435,6 +450,8 @@ if __name__ == '__main__':
     }
 
     go = simple_option(options)
+
+    go.log.debug("pid: %s", os.getpid())
 
     m = MyPingPong(go.log, go.options.iterations, go.options.number)
 
