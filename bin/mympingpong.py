@@ -379,11 +379,10 @@ class MyPingPong(object):
         timingdata = pp.dopingpong(self.it)
 
         # write a progress bar to stdout, but only update it when the percentage changes
-        if self.rank==0, and runid % (self.nr/100) == 0:
+        if self.rank==0 and runid % (self.nr/100) == 0:
             progress = int(float(runid)*100/self.nr)
             hashes = progress/5
-            sys.stdout.write("\rRunning tests: [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
-            sys.stdout.flush()        
+            self.log.debug("Running tests: [ %s ](%s%%) run %s/%s " % ('#'*hashes + '-'*(20-hashes), progress, runid*self.size, self.nr*self.size))
 
         details = {
             'ppgroup': pp.group,
