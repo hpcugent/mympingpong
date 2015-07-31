@@ -57,7 +57,7 @@ from vsc.utils.run import run_simple
 
 class MyPingPong(object):
 
-    def __init__(self, logger):
+    def __init__(self, logger, it, num):
         self.log = logger
 
         self.rngfilter = None
@@ -71,11 +71,14 @@ class MyPingPong(object):
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
+        self.it = it
+        self.nr = num
+
         self.outputfile = None
 
-    def setfn(self, directory, it, nr, msg, remove=True):
+    def setfn(self, directory, msg, remove=True):
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg,nr, it, timestamp)
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg, self.nr, self.it, timestamp)
         if remove and os.path.exists(self.fn):
             try:
                 MPI.File.Delete(self.fn)
@@ -205,7 +208,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, seed=1, msgsize=1024, it=20, nr=None, maxruntime=0, barrier=True, barrier2=False):
+    def runpingpong(self, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -237,8 +240,8 @@ class MyPingPong(object):
         fail: a 2D array that contains information on how many times a rank has failed a test
         """
 
-        if not nr:
-            nr = int(self.size/2)+1
+        if self.nr is None:
+            self.nr = int(self.size/2)+1
 
         if not self.pairmode:
             self.pairmode = 'shuffle'
@@ -255,10 +258,10 @@ class MyPingPong(object):
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
-        pair.setnr(nr)
+        pair.setnr(self.nr)
         mypairs = pair.makepairs()
 
-        if nr > (2 * (self.size-1)):
+        if self.nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
             # therefore, create the keys beforehand to minimize hash collisions
             # possible combinations are the permutations of range(size) that contain rank
@@ -285,7 +288,7 @@ class MyPingPong(object):
             if barrier:
                 self.comm.barrier()
 
-            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend, it=it)
+            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
 
             if barrier2:
                 self.comm.barrier()
@@ -311,9 +314,9 @@ class MyPingPong(object):
             'pairmode': self.pairmode,
             'totalranks': self.size,
             'name': self.name,
-            'nr_tests': nr,
+            'nr_tests': self.nr,
             'msgsize': msgsize,
-            'iter': it,
+            'iter': self.it,
             'ppmode' : pmode,
             'failed' : failed,
             'timing' : timing,
@@ -325,7 +328,7 @@ class MyPingPong(object):
         self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
-    def pingpong(self, p1, p2, pmode='fast2', dat=None, it=20, barrier=True, dummyfirst=False, test=False):
+    def pingpong(self, p1, p2, runid, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
         """
         Pingpong between pairs
 
@@ -373,8 +376,13 @@ class MyPingPong(object):
             self.log.debug("pingpong: dummy first")
             pp.dopingpong(1)
 
-        timingdata = pp.dopingpong(it)
-        self.log.debug("%s->%s", p1, p2)
+        timingdata = pp.dopingpong(self.it)
+
+        # write a progress bar to stdout, but only update it when the percentage changes
+        if self.rank==0 and runid % (self.nr/100) == 0:
+            progress = int(float(runid)*100/self.nr)
+            hashes = progress/5
+            self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
 
         details = {
             'ppgroup': pp.group,
@@ -428,12 +436,12 @@ if __name__ == '__main__':
 
     go = simple_option(options)
 
-    m = MyPingPong(go.log)
+    m = MyPingPong(go.log, go.options.iterations, go.options.number)
 
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(go.options.output, go.options.iterations, go.options.number, go.options.messagesize)
+    m.setfn(go.options.output, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
         m.setpairmode(rngfilter=go.options.groupmode)
@@ -443,7 +451,6 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         m.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, 
-                  it=go.options.iterations, nr=go.options.number, maxruntime=go.options.maxruntime)
+    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", go.options.output)
