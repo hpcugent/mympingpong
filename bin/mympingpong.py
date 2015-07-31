@@ -42,6 +42,7 @@ import time
 import datetime
 import os
 import re
+import signal
 import sys
 from itertools import permutations
 
@@ -75,6 +76,27 @@ class MyPingPong(object):
         self.nr = num
 
         self.outputfile = None
+
+        self.abortsignal = False
+
+        signal.signal(signal.SIGUSR1, self.abort)
+
+    def abort(self, signum, frame):
+        """intercepts a SIGUSR1 signal."""
+        self.log.warning("received abortsignal on rank %s", self.rank)
+        self.abortsignal = True
+
+    def alltoallabort(self, maxruntime, start):
+        """ notifies all if they can continue or should abort"""
+        abort = self.abortsignal
+
+        if (maxruntime and (time.time() - start) > maxruntime):
+            self.log.warning("maximum runtime was reached on rank %s", self.rank) 
+            abort = True
+
+        abortlist = [abort] * self.size
+        alltoall = self.comm.alltoall(abortlist)
+        return any(alltoall)
 
     def setfn(self, directory, msg, remove=True):
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -208,7 +230,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
+    def runpingpong(self, abort_check, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
         """
         makes a list of pairs and calls pingpong on those
 
@@ -252,6 +274,16 @@ class MyPingPong(object):
  
         cpumap = self.makecpumap()
 
+        attrs = {
+            'pairmode': self.pairmode,
+            'totalranks': self.size,
+            'name': self.name,
+            'nr_tests': self.nr,
+            'msgsize': msgsize,
+            'iterations': self.it,
+            'aborted': False,
+        }
+
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, 
                                     rng=self.size, pairid=self.rank, logger=self.log)
@@ -280,18 +312,20 @@ class MyPingPong(object):
 
         pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
-        for runid, pair in enumerate(mypairs):
-            if maxruntime and (time.time() - start) > maxruntime:
-                self.log.info("Maximum runtime %s reached", maxruntime)
-                break
 
-            if barrier:
+        for runid, pair in enumerate(mypairs):
+            self.comm.barrier()
+
+            if abort_check:
+                if self.alltoallabort(maxruntime, start):
+                    attrs.update({
+                        'nr_tests': runid*self.size,
+                        'aborted': True,
+                    })
+                    break        
                 self.comm.barrier()
 
             timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
-
-            if barrier2:
-                self.comm.barrier()
 
             key = tuple(pair)
             try:
@@ -310,22 +344,15 @@ class MyPingPong(object):
         failed = n.count_nonzero(fail) > 0
         timing = int((time.time() - start))
 
-        attrs = {
-            'pairmode': self.pairmode,
-            'totalranks': self.size,
-            'name': self.name,
-            'nr_tests': self.nr,
-            'msgsize': msgsize,
-            'iter': self.it,
+        attrs.update({
             'ppmode' : pmode,
             'failed' : failed,
             'timing' : timing,
-        }
+        })
 
         if not failed:
             attrs.update(pmodedetails)
 
-        self.log.debug("bool pmodedetails: %s", bool(pmodedetails))
         self.writehdf5(data, attrs, failed, fail)  
 
     def pingpong(self, p1, p2, runid, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
@@ -386,7 +413,6 @@ class MyPingPong(object):
 
         details = {
             'ppgroup': pp.group,
-            'ppiterations': pp.it,
         }
 
         return timingdata, details
@@ -405,7 +431,8 @@ class MyPingPong(object):
 
         for k,v in attributes.items():
             f.attrs[k] = v
-            self.log.debug("added attribute %s: %s to data.attrs", k, v)
+            if self.rank == 0:
+                self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
         dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
         for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
@@ -432,25 +459,30 @@ if __name__ == '__main__':
         'seed': ('set the seed', int, 'store', 2, 's'),
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
+        'abort_check': ('check for abort signals or maxruntime', '', 'store_true', True , 'a'),
     }
 
     go = simple_option(options)
 
-    m = MyPingPong(go.log, go.options.iterations, go.options.number)
+    go.log.debug("abort_check flag: %s ", go.options.abort_check)
+    if not go.options.abort_check and maxruntime != 0:
+        self.log.warning("maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
+
+    mpp = MyPingPong(go.log, go.options.iterations, go.options.number)
 
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    m.setfn(go.options.output, go.options.messagesize)
+    mpp.setfn(go.options.output, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
-        m.setpairmode(rngfilter=go.options.groupmode)
+        mpp.setpairmode(rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'groupexcl':
-        m.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
+        mpp.setpairmode(pairmode=go.options.groupmode, rngfilter=go.options.groupmode)
     elif go.options.groupmode == 'hwloc':
         # no rngfilter needed (hardcoded to incl)
-        m.setpairmode(pairmode=go.options.groupmode)
+        mpp.setpairmode(pairmode=go.options.groupmode)
 
-    m.runpingpong(seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+    mpp.runpingpong(go.options.abort_check, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
-    go.log.info("data written to %s", go.options.output)
+    go.log.info("data written to %s", mpp.fn)
