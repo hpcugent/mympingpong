@@ -270,6 +270,16 @@ class MyPingPong(object):
  
         cpumap = self.makecpumap()
 
+        attrs = {
+            'pairmode': self.pairmode,
+            'totalranks': self.size,
+            'name': self.name,
+            'nr_tests': self.nr,
+            'msgsize': msgsize,
+            'iterations': self.it,
+            'aborted': False,
+        }
+
         try:
             pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, 
                                     rng=self.size, pairid=self.rank, logger=self.log)
@@ -298,12 +308,20 @@ class MyPingPong(object):
 
         pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
+
+
+
         for runid, pair in enumerate(mypairs):
             self.comm.barrier()
 
             abort = (maxruntime and (time.time() - start) > maxruntime) or self.abortsignal
             if self.evaluateabort(abort):
                 self.log.warning("Aborting on rank %s", self.rank)
+                attrs.update({
+                    'nr_tests': runid*self.size,
+                    'aborted': True,
+                })
+
                 break
 
             timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
@@ -325,17 +343,11 @@ class MyPingPong(object):
         failed = n.count_nonzero(fail) > 0
         timing = int((time.time() - start))
 
-        attrs = {
-            'pairmode': self.pairmode,
-            'totalranks': self.size,
-            'name': self.name,
-            'nr_tests': self.nr,
-            'msgsize': msgsize,
-            'iter': self.it,
+        attrs.update({
             'ppmode' : pmode,
             'failed' : failed,
             'timing' : timing,
-        }
+        })
 
         if not failed:
             attrs.update(pmodedetails)
@@ -401,7 +413,6 @@ class MyPingPong(object):
 
         details = {
             'ppgroup': pp.group,
-            'ppiterations': pp.it,
         }
 
         return timingdata, details
