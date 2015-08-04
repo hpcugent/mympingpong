@@ -45,10 +45,10 @@ import re
 import signal
 import sys
 from itertools import permutations
+from xml.etree import ElementTree as etree
 
 import h5py
 import numpy as n
-from lxml import etree
 from mpi4py import MPI
 
 from vsc.mympingpong.pingpongers import PingPongSR
@@ -115,7 +115,7 @@ class MyPingPong(object):
         self.mapfilter = mapfilter
         self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
 
-    def makedata(self, l=1024L):
+    def makedata(self, l=1024):
         """create data with size l (in Bytes)"""
         return array.array('c', '\0'*l)
 
@@ -182,7 +182,7 @@ class MyPingPong(object):
 
         sks_xpath = '//object[@type="Socket"]'
         # list of socket ids
-        sks = map(int, base.xpath(sks_xpath + '/@os_index'))
+        sks = map(int, [i.attrib['os_index'] for i in base.findall(sks_xpath)])
         self.log.debug("sockets: %s", sks)
 
         aPU = 0
@@ -190,13 +190,13 @@ class MyPingPong(object):
         for x, sk in enumerate(sks):
             cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, x)
             # list of core ids in socket x
-            crs = map(int, base.xpath('%s/@os_index' % cr_xpath))
+            crs = map(int, [j.attrib['os_index'] for j in base.findall(cr_xpath)])
             self.log.debug("cores: %s", crs)
 
             for y, cr in enumerate(crs):
                 pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, y)
                 # list of PU ids in core y from socket x
-                pus = map(int, base.xpath('%s/@os_index' % pu_xpath))
+                pus = map(int, [k.attrib['os_index'] for k in base.findall(pu_xpath)])
                 self.log.debug("PU's: %s", pus)
 
                 # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
