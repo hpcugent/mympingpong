@@ -252,7 +252,7 @@ class PingPongAnalysis(object):
         self.setticks(3, n.size(consistency,0), sub)
         sub.set_title('standard deviation')
 
-    def plot(self, colormap, fn, show):
+    def plot(self, colormap, fn, show, save):
         self.log.debug("plot")
 
         mp.rcParams.update({'font.size': 15})
@@ -282,8 +282,9 @@ class PingPongAnalysis(object):
 
         fig1.canvas.draw()
 
-        filename, ext = os.path.splitext(fn)
-        fig1.savefig('%s.png' %filename, facecolor=fig1.get_facecolor())
+        if save:
+            filename, ext = os.path.splitext(fn)
+            fig1.savefig('%s.png' %filename, facecolor=fig1.get_facecolor())
 
         if show:
             plt.show()
@@ -304,11 +305,14 @@ if __name__ == '__main__':
             ),
         'bins': ('set the amount of bins in the histograms', 'int', 'store', 100, 'b'),
         'colormap': ('set the colormap, for a list of options see http://matplotlib.org/users/colormaps.html', 'string', 'store', 'jet', 'c'),
-        'show': ('show the image after generating', '', 'store_true', False, 'S'),
+        'show': ('show the image after generating', '', 'store_true', False),
+        'save': ('show the image after generating', '', 'store_true', True),
     }
 
     go = simple_option(options)
-    go.log.debug('show %s', go.options.show)
+
+    if not go.options.save and not go.options.show:
+        go.log.warning("Both save and show are false, the plot will be generated but neither shown nor saved")
 
     lscale = map(float, go.options.latencyscale) if go.options.latencyscale else INTERVAL_NONE
     lmask = map(float, go.options.latencymask) if go.options.latencymask else INTERVAL_NONE
@@ -316,4 +320,4 @@ if __name__ == '__main__':
     ppa = PingPongAnalysis(go.log, lscale, lmask, go.options.bins)
     ppa.collecthdf5(go.options.input)
 
-    ppa.plot(go.options.colormap, go.options.input, go.options.show)
+    ppa.plot(go.options.colormap, go.options.input, go.options.show, go.options.save)
