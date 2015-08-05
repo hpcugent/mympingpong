@@ -178,7 +178,7 @@ class MyPingPong(object):
         # parse xmloutput
         base = etree.parse(xmlout)
 
-        sks_xpath = '//object[@type="Socket"]'
+        sks_xpath = './/object[@type="Socket"]'
         # list of socket ids
         sks = map(int, [i.attrib['os_index'] for i in base.findall(sks_xpath)])
         self.log.debug("sockets: %s", sks)
