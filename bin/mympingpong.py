@@ -424,13 +424,16 @@ class MyPingPong(object):
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
         """
-        if remove and os.path.exists(self.fn):
-            try:
-                MPI.File.Delete(self.fn)
-            except Exception as err:
-                self.log.error("Failed to delete file %s: %s" % (self.fn, err))
+        filename = self.filename
 
-        f = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
+        if remove and os.path.exists(filename):
+            try:
+                MPI.File.Delete(filename)
+            except Exception as err:
+                self.log.error("Failed to delete file %s: %s" % (filename, err))
+                filename = "_%s" % filename
+
+        f = h5py.File(filename, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
