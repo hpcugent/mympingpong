@@ -275,7 +275,6 @@ class MyPingPong(object):
         attrs = {
             'pairmode': self.pairmode,
             'totalranks': self.size,
-            'name': self.name,
             'nr_tests': self.nr,
             'msgsize': msgsize,
             'iterations': self.it,
