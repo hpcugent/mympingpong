@@ -251,7 +251,7 @@ class PingPongAnalysis(object):
         self.setticks(3, n.size(consistency,0), sub)
         sub.set_title('standard deviation')
 
-    def plot(self, colormap):
+    def plot(self, colormap, fn, show):
         self.log.debug("plot")
 
         mp.rcParams.update({'font.size': 15})
@@ -281,7 +281,10 @@ class PingPongAnalysis(object):
 
         fig1.canvas.draw()
 
-        plt.show()
+        fig1.savefig('%s.png' % fn[:-3], facecolor=fig1.get_facecolor())
+
+        if show:
+            plt.show()
 
 
 if __name__ == '__main__':
@@ -299,9 +302,11 @@ if __name__ == '__main__':
             ),
         'bins': ('set the amount of bins in the histograms', 'int', 'store', 100, 'b'),
         'colormap': ('set the colormap, for a list of options see http://matplotlib.org/users/colormaps.html', 'string', 'store', 'jet', 'c'),
+        'show': ('show the image after generating', '', 'store_true', False, 'S'),
     }
 
     go = simple_option(options)
+    go.log.debug('show %s', go.options.show)
 
     lscale = map(float, go.options.latencyscale) if go.options.latencyscale else INTERVAL_NONE
     lmask = map(float, go.options.latencymask) if go.options.latencymask else INTERVAL_NONE
@@ -309,4 +314,4 @@ if __name__ == '__main__':
     ppa = PingPongAnalysis(go.log, lscale, lmask, go.options.bins)
     ppa.collecthdf5(go.options.input)
 
-    ppa.plot(go.options.colormap)
+    ppa.plot(go.options.colormap, go.options.input, go.options.show)
