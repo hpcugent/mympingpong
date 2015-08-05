@@ -99,11 +99,11 @@ class MyPingPong(object):
         return any(alltoall)
 
     def setfn(self, directory, msg):
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if rank == 0 else None
-        timestamp = comm.bcast(data, root=0)
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.rank == 0 else None
+        timestamp = self.comm.bcast(timestamp, root=0)
 
-        name = self.name if rank == 0 else None
-        name = comm.bcast(data, root=0)
+        name = self.name if self.rank == 0 else None
+        name = self.comm.bcast(name, root=0)
 
         self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, name, self.size, msg, self.nr, self.it, timestamp)
 
