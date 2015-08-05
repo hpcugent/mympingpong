@@ -252,7 +252,7 @@ class PingPongAnalysis(object):
         self.setticks(3, n.size(consistency,0), sub)
         sub.set_title('standard deviation')
 
-    def plot(self, colormap, fn, show, save):
+    def plot(self, colormap, fn, show, save, lscale, lmask):
         self.log.debug("plot")
 
         mp.rcParams.update({'font.size': 15})
@@ -283,8 +283,14 @@ class PingPongAnalysis(object):
         fig1.canvas.draw()
 
         if save:
+
             filename, ext = os.path.splitext(fn)
+            if lscale is not INTERVAL_NONE:
+                filename = "%s-scale%s-%s" % (filename, lscale[0], lscale[1])  
+            if lmask is not INTERVAL_NONE:
+                filename = "%s-mask%s-%s" % (filename, lmask[0], lmask[1])  
             fig1.savefig('%s.png' %filename, facecolor=fig1.get_facecolor())
+            self.log.debug("image written as %s.png", filename)
 
         if show:
             plt.show()
@@ -320,4 +326,4 @@ if __name__ == '__main__':
     ppa = PingPongAnalysis(go.log, lscale, lmask, go.options.bins)
     ppa.collecthdf5(go.options.input)
 
-    ppa.plot(go.options.colormap, go.options.input, go.options.show, go.options.save)
+    ppa.plot(go.options.colormap, go.options.input, go.options.show, go.options.save, lscale, lmask)
