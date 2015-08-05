@@ -424,7 +424,7 @@ class MyPingPong(object):
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
         """
-        filename = self.filename
+        filename = self.fn
 
         if remove and os.path.exists(filename):
             try:
