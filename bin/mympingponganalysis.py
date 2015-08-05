@@ -32,6 +32,7 @@ Generate plots from output from mympingpong.py
 """
 
 import bisect
+import os
 import sys
 from math import sqrt
 
@@ -281,7 +282,8 @@ class PingPongAnalysis(object):
 
         fig1.canvas.draw()
 
-        fig1.savefig('%s.png' % fn[:-3], facecolor=fig1.get_facecolor())
+        filename, ext = os.path.splitext(fn)
+        fig1.savefig('%s.png' %filename, facecolor=fig1.get_facecolor())
 
         if show:
             plt.show()
