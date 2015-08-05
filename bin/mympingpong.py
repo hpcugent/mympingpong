@@ -98,16 +98,14 @@ class MyPingPong(object):
         alltoall = self.comm.alltoall(abortlist)
         return any(alltoall)
 
-    def setfn(self, directory, msg, remove=True):
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, self.name, self.size, msg, self.nr, self.it, timestamp)
-        if remove and os.path.exists(self.fn):
-            try:
-                MPI.File.Delete(self.fn)
-            except Exception as err:
-                self.log.error("Failed to delete file %s: %s" % (self.fn, err))
+    def setfn(self, directory, msg):
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.rank == 0 else None
+        timestamp = self.comm.bcast(timestamp, root=0)
 
-        self.outputfile = h5py.File(self.fn, 'w', driver='mpio', comm=self.comm)
+        name = self.name if self.rank == 0 else None
+        name = self.comm.bcast(name, root=0)
+
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, name, self.size, msg, self.nr, self.it, timestamp)
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
         self.pairmode = pairmode
@@ -180,7 +178,7 @@ class MyPingPong(object):
         # parse xmloutput
         base = etree.parse(xmlout)
 
-        sks_xpath = '//object[@type="Socket"]'
+        sks_xpath = './/object[@type="Socket"]'
         # list of socket ids
         sks = map(int, [i.attrib['os_index'] for i in base.findall(sks_xpath)])
         self.log.debug("sockets: %s", sks)
@@ -277,7 +275,6 @@ class MyPingPong(object):
         attrs = {
             'pairmode': self.pairmode,
             'totalranks': self.size,
-            'name': self.name,
             'nr_tests': self.nr,
             'msgsize': msgsize,
             'iterations': self.it,
@@ -417,7 +414,7 @@ class MyPingPong(object):
 
         return timingdata, details
 
-    def writehdf5(self, data, attributes, failed, fail):
+    def writehdf5(self, data, attributes, failed, fail, remove=True):
         """
         writes data to a .h5 defined by the -f parameter
 
@@ -427,7 +424,16 @@ class MyPingPong(object):
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
         """
-        f = self.outputfile
+        filename = self.fn
+
+        if remove and os.path.exists(filename):
+            try:
+                MPI.File.Delete(filename)
+            except Exception as err:
+                self.log.error("Failed to delete file %s: %s" % (filename, err))
+                filename = "_%s" % filename
+
+        f = h5py.File(filename, 'w', driver='mpio', comm=self.comm)
 
         for k,v in attributes.items():
             f.attrs[k] = v
