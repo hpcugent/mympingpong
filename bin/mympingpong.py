@@ -82,18 +82,30 @@ class MyPingPong(object):
 
         signal.signal(signal.SIGUSR1, self.abort)
 
+        self.core = self.setrankaffinity()
+
+    def setrankaffinity(self):
         ranknodes = self.comm.alltoall([self.name]*self.size)
         ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
 
         x = sched_getaffinity()
+        self.log.debug("affinity pre-set: %s", str(x))
+
         cores = [i for i, j in enumerate(x.cpus) if j == 1L]
 
-        for index, rank in enumerate(ranksonnode):
-            if self.rank == rank:
-                x.convert_hr_bits(str(cores[index%len(cores)]))
-                sched_setaffinity(x)
+        topin = '0'
+        if len(ranksonnode) > 1:
+            for index, rank in enumerate(ranksonnode):
+                if self.rank == rank:
+                    self.log.debug("setting affinity")
+                   topin = str(cores[index%len(cores)])
+                   
+        x.convert_hr_bits(topin)
+        sched_setaffinity(x)
 
-        self.core = str(sched_getaffinity())
+        x = sched_getaffinity()
+        self.log.debug("affinity post-set: %s", str(x))
+        return str(x)
 
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
