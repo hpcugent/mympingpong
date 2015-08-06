@@ -93,11 +93,15 @@ class MyPingPong(object):
 
         cores = [i for i, j in enumerate(x.cpus) if j == 1L]
 
-        topin = cores[0]
+        topin = None
         for index, iterrank in enumerate(ranksonnode):
             if iterrank == self.rank:
                 topin = cores[index%len(cores)]
                 self.log.debug("setting affinity to core: %s", topin)
+
+        if topin is None:
+            topin = cores[0]
+            self.log.warning("could not determine core to pin the rank to. automatically set it to %s", topin)
 
         x.convert_hr_bits(str(topin))
         x.set_bits()
@@ -154,31 +158,15 @@ class MyPingPong(object):
         pc: the current Processor Unit
         ph: its socket-id and core-id (output from hwlocmap())
         """
-
-        try:
-            mypid = os.getpid()
-        except OSError as err:
-            self.log.error("Can't obtain current process id: %s", err)
-
-        cmd = "taskset -c -p %s" % mypid
-        ec, out = run_simple(cmd)
-        regproc = re.compile(r"\s+(\d+)\s*$")
-        r = regproc.search(out)
-        if r:
-            myproc = r.group(1)
-            self.log.debug("getprocinfo: found proc %s taskset: %s", myproc, out)
-        else:
-            self.log.error("No single proc found. Was pinning enabled? (taskset: %s)", out)
-
         hwlocmap = self.hwlocmap()
         prop = None
 
         try:
-            prop = hwlocmap[int(myproc)]
+            prop = hwlocmap[int(self.core)]
         except KeyError as err:
             self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
 
-        pc = "core_%s" % myproc
+        pc = "core_%s" % self.core
         ph = "hwloc_%s" % prop
         self.log.debug("getprocinfo: found property core %s hwloc %s", pc, ph)
 
@@ -191,7 +179,6 @@ class MyPingPong(object):
         Returns:
         A dict that maps the absolute Processor Unit ID to its socket-id and its core-id
         """
-
         res = {}
         xmlout = "/tmp/test.xml.%s" % os.getpid()
         exe = "/usr/bin/hwloc-ls"
