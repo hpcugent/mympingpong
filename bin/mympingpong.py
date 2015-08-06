@@ -93,6 +93,8 @@ class MyPingPong(object):
                 x.convert_hr_bits(str(cores[index%len(cores)]))
                 sched_setaffinity(x)
 
+        self.core = str(sched_getaffinity())
+
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
         self.log.warning("received abortsignal on rank %s", self.rank)
@@ -464,10 +466,13 @@ class MyPingPong(object):
             failset[self.rank] = fail[self.rank]
 
         STR_LEN = 64
-        rankname = f.create_dataset('rankname', (self.size,), dtype='S%s' % str(STR_LEN))
-        rankname[self.rank] = '{message: <{fill}}'.format(message=self.name[0:STR_LEN], fill=STR_LEN)
+        rankname = f.create_dataset('rankdata', (self.size,2), dtype='S%s' % str(STR_LEN))
+        rankname[self.rank] = (self.fitstr(self.name,STR_LEN),self.fitstr(self.core,STR_LEN))
 
         f.close()
+
+    def fitstr(self,string,length):
+        return '{message: <{fill}}'.format(message=string[0:length], fill=length)
 
 if __name__ == '__main__':
 
