@@ -451,9 +451,9 @@ class MyPingPong(object):
             failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
             failset[self.rank] = fail[self.rank]
 
-        str_len = 20
-        rankname = f.create_dataset('rankname', (self.size,), dtype='S%s' % str(str_len))
-        rankname[self.rank] = '{message: <{fill}}'.format(message=self.name[0:str_len], fill=str_len)
+        STR_LEN = 64
+        rankname = f.create_dataset('rankname', (self.size,), dtype='S%s' % str(STR_LEN))
+        rankname[self.rank] = '{message: <{fill}}'.format(message=self.name[0:STR_LEN], fill=STR_LEN)
 
         f.close()
 
