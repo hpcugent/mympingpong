@@ -82,13 +82,13 @@ class MyPingPong(object):
 
         signal.signal(signal.SIGUSR1, self.abort)
 
-        ranknodes = alltoall([self.name]*self.size)
+        ranknodes = self.comm.alltoall([self.name]*self.size)
         ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
 
         x = sched_getaffinity()
         cores = [i for i, j in enumerate(x.cpus) if j == 1L]
 
-        for index, rank in enumerate(ranksonnode)
+        for index, rank in enumerate(ranksonnode):
             if self.rank == rank:
                 x.convert_hr_bits(str(cores[index%len(cores)]))
                 sched_setaffinity(x)
