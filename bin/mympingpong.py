@@ -54,7 +54,7 @@ from mpi4py import MPI
 from vsc.mympingpong.pingpongers import PingPongSR
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
-from vsc.utils.affinity import sched_getaffinity,sched_setaffinity
+from vsc.utils.affinity import sched_getaffinity, sched_setaffinity
 
 
 class MyPingPong(object):
@@ -72,6 +72,7 @@ class MyPingPong(object):
         self.name = MPI.Get_processor_name()
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
+        self.core = self.setrankaffinity()
 
         self.it = it
         self.nr = num
@@ -82,16 +83,14 @@ class MyPingPong(object):
 
         signal.signal(signal.SIGUSR1, self.abort)
 
-        self.core = self.setrankaffinity()
-
     def setrankaffinity(self):
         ranknodes = self.comm.alltoall([self.name]*self.size)
         ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
 
-        x = sched_getaffinity()
-        self.log.debug("affinity pre-set: %s", str(x))
+        rankaffinity = sched_getaffinity()
+        self.log.debug("affinity pre-set: %s", rankaffinity)
 
-        cores = [i for i, j in enumerate(x.cpus) if j == 1L]
+        cores = [i for i, j in enumerate(rankaffinity.cpus) if j == 1L]
 
         topin = None
         for index, iterrank in enumerate(ranksonnode):
@@ -103,13 +102,13 @@ class MyPingPong(object):
             topin = cores[0]
             self.log.warning("could not determine core to pin the rank to. automatically set it to %s", topin)
 
-        x.convert_hr_bits(str(topin))
-        x.set_bits()
-        sched_setaffinity(x)
+        rankaffinity.convert_hr_bits(str(topin))
+        rankaffinity.set_bits()
+        sched_setaffinity(rankaffinity)
 
-        x = sched_getaffinity()
-        self.log.debug("affinity post-set: %s", str(x))
-        return str(x)
+        rankaffinity = sched_getaffinity()
+        self.log.debug("affinity post-set: %s", rankaffinity)
+        return str(rankaffinity)
 
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
