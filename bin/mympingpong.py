@@ -54,6 +54,7 @@ from mpi4py import MPI
 from vsc.mympingpong.pingpongers import PingPongSR
 from vsc.mympingpong.pairs import Pair
 from vsc.utils.run import run_simple
+from vsc.utils.affinity import sched_getaffinity,sched_setaffinity
 
 
 class MyPingPong(object):
@@ -80,6 +81,17 @@ class MyPingPong(object):
         self.abortsignal = False
 
         signal.signal(signal.SIGUSR1, self.abort)
+
+        ranknodes = alltoall([self.name]*self.size)
+        ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
+
+        x = sched_getaffinity()
+        cores = [i for i, j in enumerate(x.cpus) if j == 1L]
+
+        for index, rank in enumerate(ranksonnode)
+            if self.rank == rank:
+                x.convert_hr_bits(str(cores[index%len(cores)]))
+                sched_setaffinity(x)
 
     def abort(self, signum, frame):
         """intercepts a SIGUSR1 signal."""
