@@ -93,14 +93,14 @@ class MyPingPong(object):
 
         cores = [i for i, j in enumerate(x.cpus) if j == 1L]
 
-        topin = '0'
-        if len(ranksonnode) > 1:
-            for index, rank in enumerate(ranksonnode):
-                if self.rank == rank:
-                    self.log.debug("setting affinity")
-                   topin = str(cores[index%len(cores)])
-                   
-        x.convert_hr_bits(topin)
+        topin = cores[0]
+        for index, iterrank in enumerate(ranksonnode):
+            if iterrank == self.rank:
+                topin = cores[index%len(cores)]
+                self.log.debug("setting affinity to core: %s", topin)
+
+        x.convert_hr_bits(str(topin))
+        x.set_bits()
         sched_setaffinity(x)
 
         x = sched_getaffinity()
