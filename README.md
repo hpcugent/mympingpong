@@ -47,12 +47,19 @@ On the latency graph the switch is also visible
 
 The result of running 32 ranks per node on 4 nodes with 16 cores per node
 
- Using PingPong to its fullest potential
- ======================
+Using PingPong to its fullest potential
+======================
 
 You should always take care to have enough samples per pair. In other words, 
 the -n parameter should be high enough to ensure every rank has a consistent result. 
 A quick way to see if consistent results are achieved, is when the pair samples graph has a deep red color
 
-KNowing that there is a problem might be useful, but you're more than like also going to want to know where the problem is located. 
+To illustrate: the following images were generated with the same parameters, except the first with an inadequate amount of tests
+
+## too little tests
+![](/result_images/number1.png)
+
+## right amount of tests
+
+Knowing that there is a problem might be useful, but you're more than like also going to want to know where the problem is located. 
 Information on what rank is pinned to what core on which node is present in the outputfile, but this data is not plotted with mympingponganalysis. Open it with h5dump or any other HDF5 file reader to get access to this data.
