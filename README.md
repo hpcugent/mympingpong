@@ -1,24 +1,20 @@
-mympingpong
-===========
+Mympingpong
+=========
 
-A mpi4py based random pair pingpong network stress test
+An mpi4py based random pair pingpong network stress test.
 
-TODO
-====
+Usage
+========
 
- - make code work again
-   - test on laptop
-   - fix output format, only keep subset of data (what analysis uses to plot)
+You should build a patched mpi4py and a parallel enabled h5py before trying to run mympingpong.
+Instructions on installing these can be found in manual/install_insructions
 
- - add docstrings, general code cleanup
-   - refactor in class per module?
-   - unittests
-   - use vsc.utils.generaloption and vsc.utils.fancylogger
+After this, simply submit a job  that runs
+```
+mympirun mympingpong.py -f output_dir -i nr_iterations -n nr_tests_per_rank
+```
 
- - switch to pandas
- - introduce data format for full details, make it optional
-
-DEPENDENCIES
+Dependencies
 ============
 
 (including but not limited to)
@@ -26,41 +22,51 @@ DEPENDENCIES
  - numpy >= 1.8.2
  - vsc-base >= 1.8.6
  - matplotlib >= 1.3.1
+ - h5py >= 2.5.0
 
-
-Results
+Examples
 =======
 
 The end result of a `mympingponganalysis` is a visual representation of the
-pingpong RTT of all the pairs. This can give insight in the architecture and/or topology
+pingpong Round Trip Time (RTT) of all the pairs. This can give insight in the architecture and/or topology
 (or any issues with it).
 
-There are 3 areas in each image:
- - largest plot: each datapoint is the average pingpong RTT from MPI rank from X-axis initiating pingpong to rank on Y-axis.
+## Example output
+![](/result_images/example.png)
+
+each plot graph up to 5 graphs
+ - largest plot: each datapoint is the average pingpong RTT between pairs (x,y), where x and y are the MPI ranks.
  - histogram of all pingpong RTT
- - heatmap of number of pingpongs initiated from MPI rank from X-axis to rank on Y-axis 
+ - heatmap of number of pingpongs ran on the (x,y) pair
+ - heatmap of the standard deviation in the data from running tests on the (x,y) pair
+ - if a mask as been used, a histogram of all pingpong RTT in the mask interval
 
-## Intra node NUMA
-![1 dual socket quad core harpertown (L5420)](/result_images/1node_1024byte_gengar.png)
+### Every MPI rank on a unique node
+![](/result_images/stdev.png)
 
-2 cores share L2 cache; 4 cores per socket
+The result of running pingpong on 128 nodes, with each rank pinned to core 0.
+The latency graph clearly shows which ranks are located on the same switch.
+The standard deviation graph show that something fishy is going on with ranks 32-48.
 
-![1 dual socket quad core nehalem (L5520)](/result_images/1node_1024byte_gastly.png)
+### Every MPI rank on a unique core
+![](/result_images/cores.png)
 
-Much improved cache architecture with nehalem
+The result of running pingpong on 4 nodes with 16 cores per node.
+In this example the NUMA nodes are visible. Inter node communication is clearly slower then intra node, but only by a factor of 3-5.
+The histogram shows 3 regions:shared L2 cache, on die and inter-die.
+On the latency graph the switch is also visible as a greenish shade.
 
-## Inter+intra nodes: IB vs GigE
-![2 dual scoket quad core harpertown (L5420) with DDR IB](/result_images/2nodes_1024byte_gengar.png)
+### Oversubscribing
+![](/result_images/oversubscribe.png)
 
-Inter node communication is clearly slower then intra node, but only a factor of 3-5.
-The histogram for intranode communication shows the 3 regions:shared L2 cache, on die and inter-die.
+The result of running 32 ranks per node on 4 nodes with 16 cores per node
 
-![2 dual scoket quad core nehalem (L5520) with GigE](/result_images/2nodes_1024byte_gastly.png)
+Using PingPong to its fullest potential
+======================
 
-GigE cleary has issues with latency wrt IB.
+You should always take care to have enough samples per pair. In other words, 
+the -n parameter should be high enough to ensure every rank has a consistent result. 
+A quick way to see if consistent results are achieved, is when the pair samples graph has a deep red color
 
-## 2 nodes with issue
-![2 out of 32 harpertown (L5420) with DDR IB nodes with IB firmware issue](/result_images/32node_firmwareissue_node114_115.png)
-
-32 nodes with 8 mpi tasks per node. 2 nodes (16 tasks in total) are slightly slower.
-It's not much, but the colours really make it stand out.
+Knowing that there is a problem might be useful, but you're more than like also going to want to know where the problem is located. 
+Information on what rank is pinned to what core on which node is present in the outputfile, but this data is not plotted with mympingponganalysis. Open it with h5dump or any other HDF5 file reader to get access to this data.
