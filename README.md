@@ -1,5 +1,5 @@
-mympingpong
-===========
+Mympingpong
+=========
 
 An mpi4py based random pair pingpong network stress test.
 
@@ -13,7 +13,7 @@ DEPENDENCIES
  - matplotlib >= 1.3.1
  - h5py >= 2.5.0
 
-Results
+examples
 =======
 
 The end result of a `mympingponganalysis` is a visual representation of the
@@ -38,10 +38,21 @@ The standard deviation graph show that something fishy is going on with ranks 32
 ![](/result_images/cores.png)
 
 The result of running pingpong on 4 nodes with 16 cores per node.
-In this example the NUMA nodes are visible. Inter node communication is clearly slower then intra node, but only a factor of 3-5.
-The histogram shows the 3 regions:shared L2 cache, on die and inter-die.
+In this example the NUMA nodes are visible. Inter node communication is clearly slower then intra node, but only by a factor of 3-5.
+The histogram shows 3 regions:shared L2 cache, on die and inter-die.
+On the latency graph the switch is also visible
 
 ## oversubscribing
 ![](/result_images/oversubscribe.png)
 
 The result of running 32 ranks per node on 4 nodes with 16 cores per node
+
+ Using PingPong to its fullest potential
+ ======================
+
+You should always take care to have enough samples per pair. In other words, 
+the -n parameter should be high enough to ensure every rank has a consistent result. 
+A quick way to see if consistent results are achieved, is when the pair samples graph has a deep red color
+
+KNowing that there is a problem might be useful, but you're more than like also going to want to know where the problem is located. 
+Information on what rank is pinned to what core on which node is present in the outputfile, but this data is not plotted with mympingponganalysis. Open it with h5dump or any other HDF5 file reader to get access to this data.
