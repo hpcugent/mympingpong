@@ -10,12 +10,9 @@ You should build a patched mpi4py and a parallel enabled h5py before trying to r
 Instructions on installing these can be found in manual/install_insructions
 
 After this, simply submit a job  that runs
+```
 mympirun mympingpong.py -f output_dir -i nr_iterations -n nr_tests_per_rank
-
-
-
-
-
+```
 
 Dependencies
 ============
@@ -34,7 +31,7 @@ The end result of a `mympingponganalysis` is a visual representation of the
 pingpong Round Trip Time (RTT) of all the pairs. This can give insight in the architecture and/or topology
 (or any issues with it).
 
-# example output
+## Example output
 ![](/result_images/example.png)
 
 each plot graph up to 5 graphs
@@ -44,14 +41,14 @@ each plot graph up to 5 graphs
  - heatmap of the standard deviation in the data from running tests on the (x,y) pair
  - if a mask as been used, a histogram of all pingpong RTT in the mask interval
 
-## every MPI rank on a unique node
+### Every MPI rank on a unique node
 ![](/result_images/stdev.png)
 
 The result of running pingpong on 128 nodes, with each rank pinned to core 0.
 The latency graph clearly shows which ranks are located on the same switch.
 The standard deviation graph show that something fishy is going on with ranks 32-48.
 
-## every MPI rank on a unique core
+### Every MPI rank on a unique core
 ![](/result_images/cores.png)
 
 The result of running pingpong on 4 nodes with 16 cores per node.
@@ -59,7 +56,7 @@ In this example the NUMA nodes are visible. Inter node communication is clearly 
 The histogram shows 3 regions:shared L2 cache, on die and inter-die.
 On the latency graph the switch is also visible as a greenish shade.
 
-## oversubscribing
+### Oversubscribing
 ![](/result_images/oversubscribe.png)
 
 The result of running 32 ranks per node on 4 nodes with 16 cores per node
