@@ -29,10 +29,6 @@
 @author: Jeroen De Clerck (Ghent University)
 
 Pingpong related classes and tests, based on mympi
-
-TODO: 
- - factor out the pingpong class in vsc.mympingpong.pingpong
- - refactor mypingpong class in regular main() function
 """
 # this needs to be imported before other loggers or fancylogger won't work
 from vsc.utils.generaloption import simple_option
@@ -83,7 +79,26 @@ class MyPingPong(object):
 
         signal.signal(signal.SIGUSR1, self.abort)
 
+    def setfilename(self, directory, msg):
+        """generate a filename for the outputfile"""
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.rank == 0 else None
+        timestamp = self.comm.bcast(timestamp, root=0)
+
+        name = self.name if self.rank == 0 else None
+        name = self.comm.bcast(name, root=0)
+
+        args = (directory, name, self.size, msg, self.nr, self.it, timestamp)
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % args
+
+    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
+        """set the pairmode, rngfilter and mapfilter for the pairgenerator """
+        self.pairmode = pairmode
+        self.rngfilter = rngfilter
+        self.mapfilter = mapfilter
+        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
+
     def setrankaffinity(self):
+        """pins the rank to an available core on its node"""
         ranknodes = self.comm.alltoall([self.name]*self.size)
         ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
 
@@ -95,7 +110,7 @@ class MyPingPong(object):
         topin = None
         for index, iterrank in enumerate(ranksonnode):
             if iterrank == self.rank:
-                topin = cores[index%len(cores)]
+                topin = cores[index % len(cores)]
                 self.log.debug("setting affinity to core: %s", topin)
 
         if topin is None:
@@ -116,67 +131,28 @@ class MyPingPong(object):
         self.abortsignal = True
 
     def alltoallabort(self, maxruntime, start):
-        """ notifies all if they can continue or should abort"""
+        """
+        communicates between all ranks and determines if they can continue or should abort.
+        returns True when any rank in the world has received the signal to abort.
+        """
         abort = self.abortsignal
 
         if (maxruntime and (time.time() - start) > maxruntime):
-            self.log.warning("maximum runtime was reached on rank %s", self.rank) 
+            self.log.warning("maximum runtime was reached on rank %s", self.rank)
             abort = True
 
         abortlist = [abort] * self.size
         alltoall = self.comm.alltoall(abortlist)
         return any(alltoall)
 
-    def setfn(self, directory, msg):
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.rank == 0 else None
-        timestamp = self.comm.bcast(timestamp, root=0)
-
-        name = self.name if self.rank == 0 else None
-        name = self.comm.bcast(name, root=0)
-
-        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory, name, self.size, msg, self.nr, self.it, timestamp)
-
-    def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
-        self.pairmode = pairmode
-        self.rngfilter = rngfilter
-        self.mapfilter = mapfilter
-        self.log.debug("pairmode: pairmode %s rngfilter %s mapfilter %s", pairmode, rngfilter, mapfilter)
-
     def makedata(self, l=1024):
         """create data with size l (in Bytes)"""
         return array.array('c', '\0'*l)
 
-    def getprocinfo(self):
-        """
-        returns information on the processor that is being used for the task
-
-        Arguments:
-        None
-
-        Returns:
-        pc: the current Processor Unit
-        ph: its socket-id and core-id (output from hwlocmap())
-        """
-        hwlocmap = self.hwlocmap()
-        prop = None
-
-        try:
-            prop = hwlocmap[int(self.core)]
-        except KeyError as err:
-            self.log.error("getprocinfo: failed to get hwloc info: map %s, err %s", hwlocmap, err)
-
-        pc = "core_%s" % self.core
-        ph = "hwloc_%s" % prop
-        self.log.debug("getprocinfo: found property core %s hwloc %s", pc, ph)
-
-        return pc, ph
-
     def hwlocmap(self):
         """parse and return output from hwloc-ls
-        Arguments:
-        None
-        Returns:
-        A dict that maps the absolute Processor Unit ID to its socket-id and its core-id
+
+        Returns a dict that maps the absolute Processor Unit ID to its socket-id and its core-id
         """
         res = {}
         xmlout = "/tmp/test.xml.%s" % os.getpid()
@@ -218,58 +194,40 @@ class MyPingPong(object):
                     aPU += 1
 
         self.log.debug("result map: %s", res)
-
         return res
 
     def makecpumap(self):
         """
-        returns the internal structure of the machine
-
-        Arguments:
-        None
+        returns information on the processor that is being used for the task
 
         Returns:
-        a list with all the processor units on the Machine, in this format
-        'hostname', 'Processor Unit name', [socket-id, core-id, absolute Processor Unit ID]
+        a list with information of all the ranks in the world, in this format
+        MPI processor name, pinned core, [socket-id, core-id, absolute Processor Unit ID of core]
         """
+        hwlocmap = self.hwlocmap()
+        prop = None
 
-        pc, ph = self.getprocinfo()
+        try:
+            prop = hwlocmap[int(self.core)]
+        except KeyError as err:
+            self.log.error("makecpumap: failed to get hwloc info: map %s, err %s", hwlocmap, err)
+
+        pc = "core_%s" % self.core
+        ph = "hwloc_%s" % prop
+        self.log.debug("makecpumap: found property core %s hwloc %s", pc, ph)
+
         myinfo = [self.name, pc, ph]
         mymap = [myinfo] * self.size
         alltoall = self.comm.alltoall(mymap)
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def runpingpong(self, abort_check, seed=1, msgsize=1024, maxruntime=0, barrier=True, barrier2=False):
+    def setup(self, seed, cpumap):
         """
-        makes a list of pairs and calls pingpong on those
+        Set up all variables necessary for running PingPong
 
-        Arguments:
-        seed: a seed for the random number generator used in pairs.py, should be an int.
-        msgsize: size of the data that will be sent between pairs
-        it: amount of times a pair will send and receive from eachother
-        nr: the number of pairs that will be made for each Processing Unit, in other words the sample size
-        barrier: if true, wait until every action in a set is finished before starting the next set
-
-        Returns:
-        nothing, but will the following to writehdf5(): 
-
-        myrank: MPI jobrank of the task
-        nr_tests: number of pairs made, given by the -n argument
-        totalranks: total amount of MPI jobs
-        name: the MPI processor name
-        msgsize: the size of a message that is being sent between pairs, given by the -m argument
-        iter: the amount of iterations, given by the -i argument
-        pairmode: the way that pairs are generated (randomly or 'smart'), 
-                  partially given by the -g argument (defaulf shuffle)
-        ppmode: which pingpongmode is being used
-        ppgroup: pingpongs can be bundled in groups, this is the size of those groups
-        ppiterations: duplicate of iter
-        timing: the total runtime of pingpong (does not include setup)
-
-        data: a dict that maps a pair to the amount of times it has been tested and the sum of its test timings
-        
-        fail: a 2D array that contains information on how many times a rank has failed a test
+        Returns a dictionary with global attributes, a list of pairs for pingponging with and
+        a data array for storing outputdata
         """
 
         if self.nr is None:
@@ -277,30 +235,28 @@ class MyPingPong(object):
 
         if not self.pairmode:
             self.pairmode = 'shuffle'
+
         if type(seed) == int:
             self.seed = seed
         elif self.pairmode in ['shuffle']:
             self.log.error("Runpingpong in mode shuffle and no seeding: this will never work.")
- 
-        cpumap = self.makecpumap()
-
-        attrs = {
-            'pairmode': self.pairmode,
-            'totalranks': self.size,
-            'nr_tests': self.nr,
-            'msgsize': msgsize,
-            'iterations': self.it,
-            'aborted': False,
-        }
 
         try:
-            pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed, 
+            pair = Pair.pairfactory(pairmode=self.pairmode, seed=self.seed,
                                     rng=self.size, pairid=self.rank, logger=self.log)
         except KeyError as err:
             self.log.error("Failed to create pair instance %s: %s", self.pairmode, err)
         pair.setcpumap(cpumap, self.rngfilter, self.mapfilter)
         pair.setnr(self.nr)
         mypairs = pair.makepairs()
+
+        attrs = {
+            'pairmode': self.pairmode,
+            'totalranks': self.size,
+            'nr_tests': self.nr,
+            'iterations': self.it,
+            'aborted': False,
+        }
 
         if self.nr > (2 * (self.size-1)):
             # the amount of pairs made is greater that the amount of possible combinations
@@ -312,29 +268,54 @@ class MyPingPong(object):
         else:
             data = dict()
             self.log.debug("created an empty datadict")
+
+        return attrs, mypairs, data
+
+    def run(self, abort_check=True, seed=1, msgsize=1024, maxruntime=0):
+        """
+        sets up and runs the main test loop
+
+        Arguments:
+        abort_check: if True, will check if the test should be aborted before every pingpong (includes maxruntime check)
+        seed: a seed for the random number generator used in pairs.py, should be an int.
+        msgsize: size of the data that will be sent between pairs
+        maxruntime: the maximum amount of time that the test will run. Will abort the main loop if exceeded.
+        barrier: if true, wait until every action in a set is finished before starting the next set
+
+        Returns nothing but will pass the following to writehdf5
+        attr: a dictionary containing metadata
+        data: a dict that maps a pair to the amount of times it has been tested and the sum of its test timings
+        fail: a 2D array that contains information on how many times a rank has failed a test
+        """
+        cpumap = self.makecpumap()
+        attrs, mypairs, data = self.setuppingpong(seed, cpumap)
         fail = n.zeros((self.size, self.size), int)
-
-        # introduce barrier
-        self.comm.barrier()
-        self.log.debug("runpingpong: barrier before real start (map + pairs done)")
-        start = time.time()
-
-        pmode = 'fast2'
         dattosend = self.makedata(l=msgsize)
+        pmode = 'fast2'
+
+        self.comm.barrier()
+        self.log.debug("runpingpong: setup finished")
+        start = time.time()
 
         for runid, pair in enumerate(mypairs):
             self.comm.barrier()
-
             if abort_check:
                 if self.alltoallabort(maxruntime, start):
                     attrs.update({
                         'nr_tests': runid*self.size,
                         'aborted': True,
                     })
-                    break        
+                    self.log.info("breaking pingpong loop at runid %s", runid)
+                    break
                 self.comm.barrier()
 
-            timingdata, pmodedetails = self.pingpong(pair[0], pair[1], runid, pmode=pmode, dat=dattosend)
+            timingdata, group = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend)
+
+            # log progress, but only update it when the percentage changes
+            if self.rank == 0 and runid % (self.nr/100) == 0:
+                progress = int(float(runid)*100/self.nr)
+                hashes = progress/5
+                self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
 
             key = tuple(pair)
             try:
@@ -347,40 +328,35 @@ class MyPingPong(object):
 
         for k, (count, timings) in data.items():
             data[k] = (count, n.sum(timings)/count, n.std(timings))
-
         self.log.debug("finished building data { (p1,p2) : (count, avg, stdev), }: %s", data)
 
         failed = n.count_nonzero(fail) > 0
         timing = int((time.time() - start))
 
         attrs.update({
-            'ppmode' : pmode,
-            'failed' : failed,
-            'timing' : timing,
+            'msgsize': msgsize,
+            'ppmode': pmode,
+            'failed': failed,
+            'timing': timing,
+            'ppgroup': group,
         })
 
-        if not failed:
-            attrs.update(pmodedetails)
+        self.writehdf5(data, attrs, failed, fail)
 
-        self.writehdf5(data, attrs, failed, fail)  
-
-    def pingpong(self, p1, p2, runid, pmode='fast2', dat=None, barrier=True, dummyfirst=False, test=False):
+    def pingpong(self, p1, p2, pmode='fast2', dat=None, dummyfirst=False, test=False):
         """
         Pingpong between pairs
 
         Arguments:
-        p1: pair 1
-        p2: pair 2
+        p1, p2: pair 1 & 2
         pmode: which pingpongmode is used (fast, fast2, U10) (default: fast2)
         dat: the data that is being sent
-        it: amount of pingpongs between p1 & p2 (default: 20)
-        barrier: if true, wait until every action in a set is finished before starting the next set
         dummyfirst: if true, do a dummyrun before pingponging $it times
         test: use pingpongtest()
 
         Returns:
-        timing: a list wich contains an average time, a starttime and an endtime
-        details: a dictionary with the pp.group, pp.number and pp.builtindummyfirst
+        timing: the time that it took to pingpong between 1 and 2 $it times
+        group: the group attribute of the pingponger
         """
 
         if not dat:
@@ -413,18 +389,7 @@ class MyPingPong(object):
             pp.dopingpong(1)
 
         timingdata = pp.dopingpong(self.it)
-
-        # write a progress bar to stdout, but only update it when the percentage changes
-        if self.rank==0 and runid % (self.nr/100) == 0:
-            progress = int(float(runid)*100/self.nr)
-            hashes = progress/5
-            self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
-
-        details = {
-            'ppgroup': pp.group,
-        }
-
-        return timingdata, details
+        return timingdata, pp.group
 
     def writehdf5(self, data, attributes, failed, fail, remove=True):
         """
@@ -435,6 +400,8 @@ class MyPingPong(object):
         attrs: a dict containing the attributes of the test
         failed: a boolean that is False if there were no fails during testing
         fail: a 2D array containing information on how many times a rank has failed a test
+
+        will generate a hdf5 file containing all this data plus a dataset containing information on the rank
         """
         filename = self.fn
 
@@ -447,29 +414,29 @@ class MyPingPong(object):
 
         f = h5py.File(filename, 'w', driver='mpio', comm=self.comm)
 
-        for k,v in attributes.items():
+        for k, v in attributes.items():
             f.attrs[k] = v
             if self.rank == 0:
                 self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
-        dataset = f.create_dataset('data', (self.size,self.size,len(data.values()[0])), 'f')
-        for ind, ((sendrank,recvrank),val) in enumerate(data.items()):
+        dataset = f.create_dataset('data', (self.size, self.size, len(data.values()[0])), 'f')
+        for ind, ((sendrank, recvrank), val) in enumerate(data.items()):
             if sendrank != self.rank:
                 # we only use the timingdata if the current rank is the sender
                 continue
-            dataset[sendrank,recvrank] = tuple(val)
+            dataset[sendrank, recvrank] = tuple(val)
 
         if failed:
-            failset = f.create_dataset('fail', (self.size,self.size), dtype='i8')
+            failset = f.create_dataset('fail', (self.size, self.size), dtype='i8')
             failset[self.rank] = fail[self.rank]
 
         STR_LEN = 64
-        rankname = f.create_dataset('rankdata', (self.size,2), dtype='S%s' % str(STR_LEN))
-        rankname[self.rank] = (self.fitstr(self.name,STR_LEN),self.fitstr(self.core,STR_LEN))
+        rankname = f.create_dataset('rankdata', (self.size, 2), dtype='S%s' % str(STR_LEN))
+        rankname[self.rank] = (self.fitstr(self.name, STR_LEN), self.fitstr(self.core, STR_LEN))
 
         f.close()
 
-    def fitstr(self,string,length):
+    def fitstr(self, string, length):
         return '{message: <{fill}}'.format(message=string[0:length], fill=length)
 
 if __name__ == '__main__':
@@ -484,20 +451,21 @@ if __name__ == '__main__':
         'seed': ('set the seed', int, 'store', 2, 's'),
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
-        'abort_check': ('check for abort signals or maxruntime', '', 'store_true', True , 'a'),
+        'abort_check': ('check for abort signals or maxruntime', '', 'store_true', True, 'a'),
     }
 
     go = simple_option(options)
 
     if not go.options.abort_check and maxruntime != 0:
-        self.log.warning("maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
+        self.log.warning(
+            "maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
 
     mpp = MyPingPong(go.log, go.options.iterations, go.options.number)
 
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    mpp.setfn(go.options.output, go.options.messagesize)
+    mpp.setfilename(go.options.output, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
         mpp.setpairmode(rngfilter=go.options.groupmode)
@@ -507,6 +475,7 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         mpp.setpairmode(pairmode=go.options.groupmode)
 
-    mpp.runpingpong(go.options.abort_check, seed=go.options.seed, msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+    mpp.runpingpong(abort_check=go.options.abort_check, seed=go.options.seed,
+                    msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", mpp.fn)
