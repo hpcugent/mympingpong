@@ -79,7 +79,7 @@ class MyPingPong(object):
 
         signal.signal(signal.SIGUSR1, self.abort)
 
-    def setfn(self, directory, msg):
+    def setfilename(self, directory, msg):
         """generate a filename for the outputfile"""
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.rank == 0 else None
         timestamp = self.comm.bcast(timestamp, root=0)
@@ -87,10 +87,11 @@ class MyPingPong(object):
         name = self.name if self.rank == 0 else None
         name = self.comm.bcast(name, root=0)
 
-        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % (directory,
-                                                                 name, self.size, msg, self.nr, self.it, timestamp)
+        args = (directory, name, self.size, msg, self.nr, self.it, timestamp)
+        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % args
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
+        """set the pairmode, rngfilter and mapfilter for the pairgenerator """
         self.pairmode = pairmode
         self.rngfilter = rngfilter
         self.mapfilter = mapfilter
@@ -221,7 +222,7 @@ class MyPingPong(object):
         self.log.debug("Received map %s", alltoall)
         return alltoall
 
-    def setuppingpong(self, seed, cpumap):
+    def setup(self, seed, cpumap):
         """
         Set up all variables necessary for running PingPong
 
@@ -270,7 +271,7 @@ class MyPingPong(object):
 
         return attrs, mypairs, data
 
-    def runpingpong(self, abort_check=True, seed=1, msgsize=1024, maxruntime=0):
+    def run(self, abort_check=True, seed=1, msgsize=1024, maxruntime=0):
         """
         sets up and runs the main test loop
 
@@ -304,13 +305,13 @@ class MyPingPong(object):
                         'nr_tests': runid*self.size,
                         'aborted': True,
                     })
-                    self.log.debug("breaking pingpong loop at runid %s", runid)
+                    self.log.info("breaking pingpong loop at runid %s", runid)
                     break
                 self.comm.barrier()
 
             timingdata, group = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend)
 
-            # write progress to stdout, but only update it when the percentage changes
+            # log progress, but only update it when the percentage changes
             if self.rank == 0 and runid % (self.nr/100) == 0:
                 progress = int(float(runid)*100/self.nr)
                 hashes = progress/5
@@ -464,7 +465,7 @@ if __name__ == '__main__':
     if not os.path.isdir(go.options.output):
         go.log.error("could not set outputfile: %s doesn't exist or isn't a path", go.options.output)
         sys.exit(3)
-    mpp.setfn(go.options.output, go.options.messagesize)
+    mpp.setfilename(go.options.output, go.options.messagesize)
 
     if go.options.groupmode == 'incl':
         mpp.setpairmode(rngfilter=go.options.groupmode)

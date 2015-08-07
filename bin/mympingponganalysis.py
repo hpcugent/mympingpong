@@ -100,8 +100,9 @@ class PingPongAnalysis(object):
     def setticks(self, nrticks, length, sub):
         """make and set evenly spaced ticks for the subplot, that excludes zero and max"""
         ticks = [0] * nrticks
+        normalizer =  length / (nrticks+1)
         for i in range(nrticks):
-            ticks[i] = round((i+1) * length / (nrticks+1))
+            ticks[i] = round((i+1) * normalizer)
 
         sub.set_xticks(ticks)
         sub.set_yticks(ticks)
@@ -124,8 +125,8 @@ class PingPongAnalysis(object):
             tags.append(None)
         layout = n.array(tags).reshape(nrmeta/COLUMNS, COLUMNS)
 
-        for r in xrange(nrmeta/COLUMNS):
-            for c in xrange(COLUMNS):
+        for r in range(nrmeta/COLUMNS):
+            for c in range(COLUMNS):
                 m = layout[r][c]
                 if not (m and meta.has_key(m)):
                     continue
