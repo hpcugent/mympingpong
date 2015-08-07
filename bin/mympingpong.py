@@ -489,7 +489,6 @@ if __name__ == '__main__':
 
     go = simple_option(options)
 
-    go.log.debug("abort_check flag: %s ", go.options.abort_check)
     if not go.options.abort_check and maxruntime != 0:
         self.log.warning("maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
 
