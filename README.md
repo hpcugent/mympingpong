@@ -35,7 +35,7 @@ The latency graph clearly shows which ranks are located on the same switch.
 The standard deviation graph show that something fishy is going on with ranks 32-48.
 
 ## every MPI rank on a unique core
-![](/result_images/1node_1024byte_gastly.png)
+![](/result_images/cores.png)
 
 The result of running pingpong on 4 nodes with 16 cores per node.
 In this example the NUMA nodes are visible. Inter node communication is clearly slower then intra node, but only a factor of 3-5.
