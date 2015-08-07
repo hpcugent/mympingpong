@@ -290,7 +290,7 @@ class PingPongAnalysis(object):
             if lmask is not INTERVAL_NONE:
                 filename = "%s-mask%s-%s" % (filename, lmask[0], lmask[1])  
             fig1.savefig('%s.png' %filename, facecolor=fig1.get_facecolor())
-            self.log.debug("image written as %s.png", filename)
+            self.log.info("image written as %s.png", filename)
 
         if show:
             plt.show()
@@ -312,7 +312,7 @@ if __name__ == '__main__':
         'bins': ('set the amount of bins in the histograms', 'int', 'store', 100, 'b'),
         'colormap': ('set the colormap, for a list of options see http://matplotlib.org/users/colormaps.html', 'string', 'store', 'jet', 'c'),
         'show': ('show the image after generating', '', 'store_true', False),
-        'save': ('show the image after generating', '', 'store_true', True),
+        'save': ('save the plot as a .png with the same filename and location as the inputfile.', '', 'store_true', True),
     }
 
     go = simple_option(options)
