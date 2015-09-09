@@ -31,7 +31,7 @@ Setup for mympingpong
 """
 from vsc.install.shared_setup import action_target, sdw, vsc_install_scripts
 
-VERSION = '0.5.0'
+VERSION = '0.6.0'
 
 PACKAGE = {
     'name': 'mympingpong',
