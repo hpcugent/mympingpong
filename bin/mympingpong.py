@@ -288,7 +288,7 @@ class MyPingPong(object):
         fail: a 2D array that contains information on how many times a rank has failed a test
         """
         cpumap = self.makecpumap()
-        attrs, mypairs, data = self.setuppingpong(seed, cpumap)
+        attrs, mypairs, data = self.setup(seed, cpumap)
         fail = n.zeros((self.size, self.size), int)
         dattosend = self.makedata(l=msgsize)
         pmode = 'fast2'
