@@ -294,7 +294,7 @@ class MyPingPong(object):
         pmode = 'fast2'
 
         self.comm.barrier()
-        self.log.debug("runpingpong: setup finished")
+        self.log.debug("run: setup finished")
         start = time.time()
 
         for runid, pair in enumerate(mypairs):
@@ -475,7 +475,7 @@ if __name__ == '__main__':
         # no rngfilter needed (hardcoded to incl)
         mpp.setpairmode(pairmode=go.options.groupmode)
 
-    mpp.runpingpong(abort_check=go.options.abort_check, seed=go.options.seed,
-                    msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+    mpp.run(abort_check=go.options.abort_check, seed=go.options.seed,
+            msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
 
     go.log.info("data written to %s", mpp.fn)
