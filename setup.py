@@ -29,23 +29,21 @@
 """
 Setup for mympingpong
 """
-from vsc.install.shared_setup import action_target, sdw, vsc_install_scripts
 
-VERSION = '0.6.2'
+from vsc.install.shared_setup import action_target, sdw, URL_GH_HPCUGENT
 
 PACKAGE = {
     'name': 'mympingpong',
-    'provides': 'mympingpong = %s' % VERSION,
-    'install_requires': ['vsc-base >= 1.8.6', 'numpy >= 1.8.2', 'matplotlib >= 1.3.1'],
-    'version': VERSION,
+    'version': '0.7.0',
+    'install_requires': [
+        'vsc-base >= 2.4.12',
+        'numpy >= 1.8.2',
+        'matplotlib >= 1.3.1',
+        'lxml',
+    ],
     'author': [sdw],
     'maintainer': [sdw],
-    'packages': ['vsc.mympingpong', 'vsc'],
-    'scripts': ['bin/mympingpong.py', 'bin/mympingponganalysis.py'],
-    'cmdclass': {
-        "install_scripts": vsc_install_scripts,
-    },
 }
 
 if __name__ == '__main__':
-    action_target(PACKAGE, extra_sdist=['shared_setup_mympirun.py'])
+    action_target(PACKAGE, urltemplate=URL_GH_HPCUGENT)

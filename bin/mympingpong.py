@@ -41,7 +41,6 @@ import re
 import signal
 import sys
 from itertools import permutations
-from xml.etree import ElementTree as etree
 
 import h5py
 import numpy as n
@@ -49,7 +48,7 @@ from mpi4py import MPI
 
 from vsc.mympingpong.pingpongers import PingPongSR
 from vsc.mympingpong.pairs import Pair
-from vsc.utils.run import run_simple
+from vsc.mympingpong.tools import hwlocmap
 from vsc.utils.affinity import sched_getaffinity, sched_setaffinity
 
 
@@ -149,53 +148,6 @@ class MyPingPong(object):
         """create data with size l (in Bytes)"""
         return array.array('c', '\0'*l)
 
-    def hwlocmap(self):
-        """parse and return output from hwloc-ls
-
-        Returns a dict that maps the absolute Processor Unit ID to its socket-id and its core-id
-        """
-        res = {}
-        xmlout = "/tmp/test.xml.%s" % os.getpid()
-        exe = "/usr/bin/hwloc-ls"
-        if not os.path.exists(exe):
-            self.log.error("hwlocmap: Can't find exe %s", exe)
-
-        cmd = "%s --output-format xml %s" % (exe, xmlout)
-        ec, txt = run_simple(cmd)
-
-        # parse xmloutput
-        base = etree.parse(xmlout)
-
-        sks_xpath = './/object[@type="Socket"]'
-        # list of socket ids
-        sks = map(int, [i.attrib['os_index'] for i in base.findall(sks_xpath)])
-        self.log.debug("sockets: %s", sks)
-
-        aPU = 0
-
-        for x, sk in enumerate(sks):
-            cr_xpath = '%s[@os_index="%s"]//object[@type="Core"]' % (sks_xpath, x)
-            # list of core ids in socket x
-            crs = map(int, [j.attrib['os_index'] for j in base.findall(cr_xpath)])
-            self.log.debug("cores: %s", crs)
-
-            for y, cr in enumerate(crs):
-                pu_xpath = '%s[@os_index="%s"]//object[@type="PU"]' % (cr_xpath, y)
-                # list of PU ids in core y from socket x
-                pus = map(int, [k.attrib['os_index'] for k in base.findall(pu_xpath)])
-                self.log.debug("PU's: %s", pus)
-
-                # absolute PU id = (socket id * cores per socket * PU's in core) + PU id
-                # in case of errors, revert back to this
-                # aPU = sks[x] * len(crs) * len(pus) + pus[z]
-                for pu in pus:
-                    t = "socket %s core %s abscore %s" % (sk, cr, aPU)
-                    res[aPU] = t
-                    aPU += 1
-
-        self.log.debug("result map: %s", res)
-        return res
-
     def makecpumap(self):
         """
         returns information on the processor that is being used for the task
@@ -204,13 +156,15 @@ class MyPingPong(object):
         a list with information of all the ranks in the world, in this format
         MPI processor name, pinned core, [socket-id, core-id, absolute Processor Unit ID of core]
         """
-        hwlocmap = self.hwlocmap()
-        prop = None
 
+        hwloc = hwlocmap()
+        prop = None
         try:
-            prop = hwlocmap[int(self.core)]
+            prop = hwloc[int(self.core)]
         except KeyError as err:
-            self.log.error("makecpumap: failed to get hwloc info: map %s, err %s", hwlocmap, err)
+            # it's important to continue, due to alltoall
+            # (if one rank has issues, comm should still complete)
+            self.log.error("makecpumap: failed to get hwloc info: map %s, err %s", hwloc, err)
 
         pc = "core_%s" % self.core
         ph = "hwloc_%s" % prop
@@ -220,6 +174,7 @@ class MyPingPong(object):
         mymap = [myinfo] * self.size
         alltoall = self.comm.alltoall(mymap)
         self.log.debug("Received map %s", alltoall)
+
         return alltoall
 
     def setup(self, seed, cpumap):
