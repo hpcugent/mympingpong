@@ -1,7 +1,7 @@
-Mympingpong
-=========
+Description
+===========
 
-An mpi4py based random pair pingpong network stress test.
+mympingpong is a mpi4py based random pair pingpong network stress test.
 
 Installation
 ============
