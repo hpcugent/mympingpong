@@ -3,15 +3,24 @@ Mympingpong
 
 An mpi4py based random pair pingpong network stress test.
 
+Installation
+============
+
+We recommend using [EasyBuild][eb_url] to automatically install `mympingpong`
+and it's dependencies.
+
+The required steps involve building a patched mpi4py
+and a parallel enabled h5py.
+Instructions on manual installing these can be found in
+manual/install_insructions.
+
+
 Usage
 ========
 
-You should build a patched mpi4py and a parallel enabled h5py before trying to run mympingpong.
-Instructions on installing these can be found in manual/install_insructions
-
-After this, simply submit a job  that runs
+After successfull installation, simply submit a job that runs
 ```
-mympirun mympingpong.py -f output_dir -i nr_iterations -n nr_tests_per_rank
+mympirun mympingpong -f output_dir -i nr_iterations -n nr_tests_per_rank
 ```
 
 Dependencies
