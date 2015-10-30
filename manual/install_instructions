@@ -1,3 +1,10 @@
+use EasyBuild
+=============
+
+No really, use EB.
+
+If you are looking for some copy/paste instructions that just work,
+this is not the correct document either.
 
 get source code
 ===============

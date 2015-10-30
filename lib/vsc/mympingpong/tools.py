@@ -74,7 +74,7 @@ def _parse_hwloc_xml(xml_fn):
         xpath = './/object[@type="%s"]' % typ
         elements[typ] = dict([(base.getpath(el), int(el.get('os_index', -1))) for el in base.findall(xpath)])
 
-    def find(typ, path):
+    def find_parent_element(typ, path):
         """
         Look for typ that is parent of path in elements
         log error if more than one is found (it really shouldn't)
@@ -92,9 +92,9 @@ def _parse_hwloc_xml(xml_fn):
 
     res = {}
     for path, pu in elements['PU'].items():
-        core = find('Core', path)
-        socket = find('Socket', path)
-        numa = find('NUMANode', path)
+        core = find_parent_element('Core', path)
+        socket = find_parent_element('Socket', path)
+        numa = find_parent_element('NUMANode', path)
         text = "socket %s core %s abscore %s numa %s" % (socket, core, pu, numa)
         res[pu] = text
 
