@@ -30,20 +30,22 @@
 Setup for mympingpong
 """
 
-from vsc.install.shared_setup import action_target, sdw, URL_GH_HPCUGENT
+from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
     'name': 'mympingpong',
     'version': '0.7.0',
     'install_requires': [
-        'vsc-base >= 2.4.12',
+        'vsc-base >= 2.4.16',
         'numpy >= 1.8.2',
         'matplotlib >= 1.3.1',
         'lxml',
+        'h5py',
+        'mpi4py < 2.0.0',
     ],
     'author': [sdw],
     'maintainer': [sdw],
 }
 
 if __name__ == '__main__':
-    action_target(PACKAGE, urltemplate=URL_GH_HPCUGENT)
+    action_target(PACKAGE)
