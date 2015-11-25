@@ -41,7 +41,7 @@ PACKAGE = {
         'matplotlib >= 1.3.1',
         'lxml',
         'h5py',
-        'mpi4py < 2.0.0',
+        'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
     ],
     'author': [sdw],
     'maintainer': [sdw],

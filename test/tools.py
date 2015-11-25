@@ -3,7 +3,7 @@ import tempfile
 
 import vsc.utils.run
 import vsc.mympingpong.tools
-from unittest import TestCase
+from vsc.install.testing import TestCase
 
 # mock the one imported in the tools module, not run_simple itself
 runs_orig = vsc.mympingpong.tools.run_simple
@@ -17,6 +17,7 @@ class ToolsTest(TestCase):
         """restore/set orignal functions mocked in test_hwlocmap"""
         vsc.mympingpong.tools.run_simple = runs_orig
         vsc.mympingpong.tools._parse_hwloc_xml = _parse_orig
+        super(ToolsTest, self).setUp()
 
     def test_hwlocmap(self):
         """Test hwlocmap"""
