@@ -35,17 +35,21 @@ class ToolsTest(TestCase):
     def test_hwlocmap(self):
         """Test hwlocmap"""
 
-        xmlout = "%s/test.xml.%s" % (tempfile.gettempdir(), os.getpid())
+        xmlout = "/some/random/filename"
 
         with patch('vsc.mympingpong.tools._parse_hwloc_xml', return_value='randomstring') as p_h_x:
             with patch('vsc.mympingpong.tools.run_simple', return_value=(1,2)) as r_s:
-                self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
-                                 msg='hwlocmap returned output from _parse_hwloc_xml')
+                with patch('tempfile.mkstemp', return_value=xmlout) as mkstemp:
+                    with patch('os.remove') as remove:
+                        self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
+                                         msg='hwlocmap returned output from _parse_hwloc_xml')
 
         # Assert run_simple called and with args
         # Assert _parse_hwloc_xml is called
         r_s.assert_called_with(vsc.mympingpong.tools.HWLOC_LS_XML_TEMPLATE % xmlout)
         p_h_x.assert_called_with(xmlout)
+        mkstemp.assert_called_with(prefix="hwloc-xml-", suffix=".xml")
+        remove.assert_called_with(xmlout)
 
     def get_xmlout(self, filename):
         """Return parsed hwloc xml output"""

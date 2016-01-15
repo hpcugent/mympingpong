@@ -42,20 +42,24 @@ HWLOC_LS_XML_TEMPLATE = HWLOC_LS + " --output-format xml %s"
 def hwlocmap():
     """
     Generate and parse output from hwloc-ls
-    
+
     Returns a dict that maps the absolute Processor Unit ID to its socket-id and its core-id
     """
-    xmlout = os.path.join(tempfile.gettempdir(), "test.xml.%s" % os.getpid())
+    xmlout = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
 
     ec, txt = run_simple(HWLOC_LS_XML_TEMPLATE % xmlout)
 
-    return _parse_hwloc_xml(xmlout)
+    parsed = _parse_hwloc_xml(xmlout)
+
+    os.remove(xmlout)
+
+    return parsed
 
 
 def _parse_hwloc_xml(xml_fn):
     """
     Generate the mapping between absolute Processor Unit ID to its socket-id and its core-id
-    
+
     xml_fn is filename for xml file with hwloc-ls output in xml format
     """
     res = {}
@@ -83,7 +87,7 @@ def _parse_hwloc_xml(xml_fn):
         found = [(p, v) for p, v in elements[typ].items() if path.startswith(p)]
         if len(found) > 1:
             logging.error("Found more than one %s for child path %s: %s" % (typ, path, found))
-        elif len(found) == 0:    
+        elif len(found) == 0:
             logging.error("Found none %s for child path %s" % (typ, path))
             return None
         # only return value
