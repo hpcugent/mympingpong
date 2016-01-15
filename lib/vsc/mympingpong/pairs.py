@@ -101,7 +101,7 @@ class Pair(object):
 
     def setnr(self, nr=None):
         if not nr:
-            nr = int(rng/2)+1
+            nr = int(self.rng/2)+1
         self.nr = nr
         self.log.debug("pairs: Number of samples: %s", nr)
 
@@ -160,7 +160,7 @@ class Pair(object):
                 if not self.revmap.has_key(p):
                     self.revmap[p] = []
                 if ind in self.revmap[p]:
-                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
+                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", ind, p, self.revmap)
                 else:
                     self.revmap[p].append(ind)
         self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)

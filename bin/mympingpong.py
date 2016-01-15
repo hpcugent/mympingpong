@@ -410,8 +410,8 @@ if __name__ == '__main__':
 
     go = simple_option(options)
 
-    if not go.options.abort_check and maxruntime != 0:
-        self.log.warning(
+    if not go.options.abort_check and go.options.maxruntime != 0:
+        go.log.warning(
             "maxruntime has been set, but abort checks have been disabled, tests wont stop after exceeding maxruntime")
 
     mpp = MyPingPong(go.log, go.options.iterations, go.options.number)

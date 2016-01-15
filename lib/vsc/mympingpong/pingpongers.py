@@ -31,10 +31,10 @@ Pingpong related classes and tests, based on mympi
 
 import copy
 
-import numpy as n
+import numpy
 
+from mpi4py import MPI
 from vsc.utils.missing import get_subclasses
-
 
 class PingPongSR(object):
     """standard pingpong"""
@@ -87,8 +87,8 @@ class PingPongSR(object):
 
     def setit(self, it):
         self.it = it
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
+        self.start = numpy.zeros(it, float)
+        self.end = numpy.zeros(it, float)
 
     def dopingpong(self, it=None):
         if it:
@@ -100,7 +100,7 @@ class PingPongSR(object):
             self.run2(self.rcvbuf, self.other, self.tag2)
             self.end[x] = MPI.Wtime()
 
-        return n.average((self.end-self.start)/(2.0*group))
+        return numpy.average((self.end-self.start)/(2.0*self.group))
 
 class PingPongRS(PingPongSR):
     """standard pingpong"""
@@ -124,8 +124,8 @@ class PingPongSRfast(PingPongSR):
         it = itall/group
         self.group = group
         self.it = itall
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
+        self.start = numpy.zeros(it, float)
+        self.end = numpy.zeros(it, float)
 
     def dopingpong(self, it=None, group=50):
         if self.groupforce:
@@ -152,11 +152,11 @@ class PingPongSRfast(PingPongSR):
             start, end = self.run1(self.rcvbuf, self.sndbuf,
                                    self.other, self.other,
                                    self.tag1, self.tag2,
-                                   group)
+                                   self.group)
             self.start[x] = start
             self.end[x] = end
 
-        return n.average((self.end-self.start)/(2.0*group))
+        return numpy.average((self.end-self.start)/(2.0*self.group))
 
 
 class PingPongRSfast(PingPongSRfast):
@@ -211,7 +211,7 @@ class PingPongRSfast2(PingPongRSfast):
 
 class PingPongtest(PingPongSR):
 
-    def dopingpong(it):
+    def dopingpong(self, it):
         for x in xrange(it):
             self.start[x] = MPI.Wtime()
             self.end[x] = MPI.Wtime()
