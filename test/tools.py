@@ -22,66 +22,44 @@
 # You should have received a copy of the GNU General Public License
 # along with mympingpong.  If not, see <http://www.gnu.org/licenses/>.
 #
+from mock import patch
 import os
 import tempfile
 
-import vsc.utils.run
 import vsc.mympingpong.tools
 from vsc.install.testing import TestCase
 
-# mock the one imported in the tools module, not run_simple itself
-runs_orig = vsc.mympingpong.tools.run_simple
-_parse_orig = vsc.mympingpong.tools._parse_hwloc_xml
-
-
 class ToolsTest(TestCase):
     """Test tools"""
-
-    def setUp(self):
-        """restore/set orignal functions mocked in test_hwlocmap"""
-        vsc.mympingpong.tools.run_simple = runs_orig
-        vsc.mympingpong.tools._parse_hwloc_xml = _parse_orig
-        super(ToolsTest, self).setUp()
 
     def test_hwlocmap(self):
         """Test hwlocmap"""
 
         xmlout = "%s/test.xml.%s" % (tempfile.gettempdir(), os.getpid())
 
-        global called
-        called = {'runs': 0, '_parse': 0}
+        with patch('vsc.mympingpong.tools._parse_hwloc_xml', return_value='randomstring') as p_h_x:
+            with patch('vsc.mympingpong.tools.run_simple', return_value=(1,2)) as r_s:
+                self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
+                                 msg='hwlocmap returned output from _parse_hwloc_xml')
 
-        def runs(cmd):
-            global called
-            called['runs'] += 1
-            print 'runs', called
-            self.assertEqual(cmd, vsc.mympingpong.tools.HWLOC_LS_XML_TEMPLATE % xmlout,
-                             msg='command %s passed to run_simple')
-            return 1, 2 # not relevant, just needs to return 2 things
+        # Assert run_simple called and with args
+        # Assert _parse_hwloc_xml is called
+        r_s.assert_called_with(vsc.mympingpong.tools.HWLOC_LS_XML_TEMPLATE % xmlout)
+        p_h_x.assert_called_with(xmlout)
 
-        def _parse(xml_fn):
-            global called
-            called['_parse'] += 1
-            print '_parse', called
-            return 'randomstring'
-
-        vsc.mympingpong.tools.run_simple = runs
-        vsc.mympingpong.tools._parse_hwloc_xml = _parse
-
-        self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
-                         msg='hwlocmap returned output from _parse_hwloc_xml')
-
-        self.assertEqual(called, {'runs': 1, '_parse': 1},
-                         msg='simple_run and _parse both called once by hwlocmap, total %s' % called)
-
-
-    def test_parse_hwloc_xml(self):
-        """Going to test _parse_hwloc_xml"""
+    def get_xmlout(self, filename):
+        """Return parsed hwloc xml output"""
         basedir = os.path.dirname(__file__)
-
-        # SB with proper bios and sequential numbered cores (numa == socket)
-        xmlout = os.path.join(basedir, 'data', 'sb_hwloc_c8220-1.5-3.el6_5.xml')
+        xmlout = os.path.join(basedir, 'data', filename)
         hmap = vsc.mympingpong.tools._parse_hwloc_xml(xmlout)
+        return hmap
+
+    def test_parse_hwloc_xml_sb_seq(self):
+        """
+        Going to test _parse_hwloc_xml with hwloc from
+        sandy bridge with proper bios and sequential numbered cores (numa == socket)
+        """
+        hmap = self.get_xmlout('sb_hwloc_c8220-1.5-3.el6_5.xml')
 
         gen_map = {}
         aPU = 0
@@ -91,9 +69,12 @@ class ToolsTest(TestCase):
                 aPU += 1
         self.assertEqual(hmap, gen_map, msg='SB sequential hwlocmap %s is equal to generated map %s' % (hmap, gen_map))
 
-        # SB with alternating numbered cores (numa == socket)
-        xmlout = os.path.join(basedir, 'data', 'sb_hwloc_r720-1.5-3.el6_5.xml')
-        hmap = vsc.mympingpong.tools._parse_hwloc_xml(xmlout)
+    def test_parse_hwloc_xml_sb_alt(self):
+        """
+        Going to test _parse_hwloc_xml with hwloc from
+        sandy bridge with alternating numbered cores (numa == socket)
+        """
+        hmap = self.get_xmlout('sb_hwloc_r720-1.5-3.el6_5.xml')
 
         gen_map = {}
         for sk in range(2): # 2 socket
@@ -103,9 +84,12 @@ class ToolsTest(TestCase):
                 aPU += 2
         self.assertEqual(hmap, gen_map, msg='SB alternating hwlocmap %s is equal to generated map %s' % (hmap, gen_map))
 
-        # haswell with cod has non-sequential numbering
-        xmlout = os.path.join(basedir, 'data', 'haswell_cod_hwloc-1.10.1-2.el7.centos.xml')
-        hmap = vsc.mympingpong.tools._parse_hwloc_xml(xmlout)
+    def test_parse_hwloc_xml_haswell_cod(self):
+        """
+        Going to test _parse_hwloc_xml with hwloc from
+        intel haswell with COD and non-sequential numbering
+        """
+        hmap = self.get_xmlout('haswell_cod_hwloc-1.10.1-2.el7.centos.xml')
 
         gen_map = {}
         offset = 12 # half the number of cores
@@ -114,7 +98,7 @@ class ToolsTest(TestCase):
                 numa = sk*2 + num
                 for dom in range(2):
                     # oh boy
-                    # cores in steps of 2, 
+                    # cores in steps of 2,
                     # there are also no cores 6/7, seems like a binned 16 core
                     # so core id is num*8 instead of num*6
                     cr = num*8 + dom
