@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-##
-# Copyright 2010-2015 Ghent University
+#
+# Copyright 2010-2016 Ghent University
 #
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -9,7 +8,7 @@
 # the Hercules foundation (http://www.herculesstichting.be/in_English)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
-# http://github.ugent.be/hpcugent/mympingpong
+# https://github.com/hpcugent/mympingpong
 #
 # mympingpong is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,13 +16,12 @@
 #
 # mympingpong is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with mympingpong. If not, see <http://www.gnu.org/licenses/>.
-##
-
+# along with mympingpong.  If not, see <http://www.gnu.org/licenses/>.
+#
 """
 @author: Stijn De Weirdt (Ghent University)
 @author: Jeroen De Clerck (Ghent University)
@@ -33,10 +31,10 @@ Pingpong related classes and tests, based on mympi
 
 import copy
 
-import numpy as n
+import numpy
 
+from mpi4py import MPI
 from vsc.utils.missing import get_subclasses
-
 
 class PingPongSR(object):
     """standard pingpong"""
@@ -89,8 +87,8 @@ class PingPongSR(object):
 
     def setit(self, it):
         self.it = it
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
+        self.start = numpy.zeros(it, float)
+        self.end = numpy.zeros(it, float)
 
     def dopingpong(self, it=None):
         if it:
@@ -102,7 +100,7 @@ class PingPongSR(object):
             self.run2(self.rcvbuf, self.other, self.tag2)
             self.end[x] = MPI.Wtime()
 
-        return n.average((self.end-self.start)/(2.0*group))
+        return numpy.average((self.end-self.start)/(2.0*self.group))
 
 class PingPongRS(PingPongSR):
     """standard pingpong"""
@@ -126,8 +124,8 @@ class PingPongSRfast(PingPongSR):
         it = itall/group
         self.group = group
         self.it = itall
-        self.start = n.zeros(it, float)
-        self.end = n.zeros(it, float)
+        self.start = numpy.zeros(it, float)
+        self.end = numpy.zeros(it, float)
 
     def dopingpong(self, it=None, group=50):
         if self.groupforce:
@@ -154,11 +152,11 @@ class PingPongSRfast(PingPongSR):
             start, end = self.run1(self.rcvbuf, self.sndbuf,
                                    self.other, self.other,
                                    self.tag1, self.tag2,
-                                   group)
+                                   self.group)
             self.start[x] = start
             self.end[x] = end
 
-        return n.average((self.end-self.start)/(2.0*group))
+        return numpy.average((self.end-self.start)/(2.0*self.group))
 
 
 class PingPongRSfast(PingPongSRfast):
@@ -213,7 +211,7 @@ class PingPongRSfast2(PingPongRSfast):
 
 class PingPongtest(PingPongSR):
 
-    def dopingpong(it):
+    def dopingpong(self, it):
         for x in xrange(it):
             self.start[x] = MPI.Wtime()
             self.end[x] = MPI.Wtime()

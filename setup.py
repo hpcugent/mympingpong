@@ -29,23 +29,23 @@
 """
 Setup for mympingpong
 """
-from vsc.install.shared_setup import action_target, sdw, vsc_install_scripts
 
-VERSION = '0.6.2'
+from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
     'name': 'mympingpong',
-    'provides': 'mympingpong = %s' % VERSION,
-    'install_requires': ['vsc-base >= 1.8.6', 'numpy >= 1.8.2', 'matplotlib >= 1.3.1'],
-    'version': VERSION,
+    'version': '0.7.0',
+    'install_requires': [
+        'vsc-base >= 2.4.16',
+        'numpy >= 1.8.2',
+        'matplotlib >= 1.3.1',
+        'lxml',
+        'h5py',
+        'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
+    ],
     'author': [sdw],
     'maintainer': [sdw],
-    'packages': ['vsc.mympingpong', 'vsc'],
-    'scripts': ['bin/mympingpong.py', 'bin/mympingponganalysis.py'],
-    'cmdclass': {
-        "install_scripts": vsc_install_scripts,
-    },
 }
 
 if __name__ == '__main__':
-    action_target(PACKAGE, extra_sdist=['shared_setup_mympirun.py'])
+    action_target(PACKAGE)

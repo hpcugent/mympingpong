@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-##
-# Copyright 2010-2015 Ghent University
+#
+# Copyright 2010-2016 Ghent University
 #
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -9,7 +8,7 @@
 # the Hercules foundation (http://www.herculesstichting.be/in_English)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
-# http://github.ugent.be/hpcugent/mympingpong
+# https://github.com/hpcugent/mympingpong
 #
 # mympingpong is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,13 +16,12 @@
 #
 # mympingpong is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with mympingpong. If not, see <http://www.gnu.org/licenses/>.
-##
-
+# along with mympingpong.  If not, see <http://www.gnu.org/licenses/>.
+#
 """
 @author: Stijn De Weirdt (Ghent University)
 
@@ -103,7 +101,7 @@ class Pair(object):
 
     def setnr(self, nr=None):
         if not nr:
-            nr = int(rng/2)+1
+            nr = int(self.rng/2)+1
         self.nr = nr
         self.log.debug("pairs: Number of samples: %s", nr)
 
@@ -162,7 +160,7 @@ class Pair(object):
                 if not self.revmap.has_key(p):
                     self.revmap[p] = []
                 if ind in self.revmap[p]:
-                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", k, p, self.revmap)
+                    self.log.error("setcpumap: already found id %s in revmap for property %s: %s", ind, p, self.revmap)
                 else:
                     self.revmap[p].append(ind)
         self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)

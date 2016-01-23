@@ -1,5 +1,5 @@
 #
-# Copyright 2015-2016 Ghent University
+# Copyright 2016-2016 Ghent University
 #
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -22,8 +22,4 @@
 # You should have received a copy of the GNU General Public License
 # along with mympingpong.  If not, see <http://www.gnu.org/licenses/>.
 #
-"""
-allow other packages to extend this namespace, zip safe setuptools style
-"""
-import pkg_resources
-pkg_resources.declare_namespace(__name__)
+
