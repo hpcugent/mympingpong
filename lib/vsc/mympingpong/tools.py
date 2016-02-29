@@ -45,8 +45,10 @@ def hwlocmap():
 
     Returns a dict that maps the absolute Processor Unit ID to its socket-id and its core-id
     """
-    xmlout = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
-
+    # Only need a filename
+    (fh, xmlout) = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
+    os.close(fh)
+    
     ec, txt = run_simple(HWLOC_LS_XML_TEMPLATE % xmlout)
 
     parsed = _parse_hwloc_xml(xmlout)

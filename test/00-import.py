@@ -22,4 +22,4 @@
 # You should have received a copy of the GNU General Public License
 # along with mympingpong.  If not, see <http://www.gnu.org/licenses/>.
 #
-from vsc.install.testing import VSCImportTest
+from vsc.install.commontest import CommonTest
