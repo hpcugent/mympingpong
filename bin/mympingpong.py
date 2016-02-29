@@ -265,8 +265,17 @@ class MyPingPong(object):
 
             timingdata, group = self.pingpong(pair[0], pair[1], pmode=pmode, dat=dattosend)
 
-            # log progress, but only update it when the percentage changes
-            if self.rank == 0 and runid % (self.nr/100) == 0:
+            # log progress
+            #   log first 10 per iteration,
+            #   next 10 per 10 (till 100)
+            #   rest only update it when the percentage changes
+            logok = False
+            if ((runid < 10) or
+                (runid < 100 and (runid % 10) == 0) or
+                (runid >= 100 and (runid % (self.nr/100) == 0))):
+                logok = True
+
+            if self.rank == 0 and logok:
                 progress = int(float(runid)*100/self.nr)
                 hashes = progress/5
                 self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
