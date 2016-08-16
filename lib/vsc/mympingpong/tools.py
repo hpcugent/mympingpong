@@ -36,7 +36,7 @@ from vsc.utils.run import run_simple
 
 
 HWLOC_LS = "hwloc-ls"
-HWLOC_LS_XML_TEMPLATE = HWLOC_LS + " --output-format xml %s"
+HWLOC_LS_XML_TEMPLATE = HWLOC_LS + " --force --output-format xml %s"
 
 
 def hwlocmap():
@@ -48,7 +48,7 @@ def hwlocmap():
     # Only need a filename
     (fh, xmlout) = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
     os.close(fh)
-    
+
     ec, txt = run_simple(HWLOC_LS_XML_TEMPLATE % xmlout)
 
     parsed = _parse_hwloc_xml(xmlout)
