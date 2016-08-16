@@ -115,3 +115,22 @@ class ToolsTest(TestCase):
                         cr += 2
                         aPU += 1
         self.assertEqual(hmap, gen_map, msg='haswell cod hwlocmap %s is equal to generated map %s' % (hmap, gen_map))
+
+    def test_parse_hwloc_xml_broadwell(self):
+        """
+        Going to test _parse_hwloc_xml with hwloc from broadwell
+        """
+        hmap = self.get_xmlout('broadwell_hwloc-1.11.3-6.el7.centos.x86_64.xml')
+
+        gen_map = {}
+        aPU = 0
+        for sk in range(2): # 2 socket
+            for num in range(2): # 2 numa per socket
+                numa = sk*2 + num
+                for scr in range(8): # 7 cores per numa domain, but core 7 doesn't exist
+                    if scr == 7:
+                        continue
+                    cr = 8*num + scr
+                    gen_map[aPU] = "socket %s core %s abscore %s numa %s" % (sk, cr, aPU, numa)
+                    aPU += 1
+        self.assertEqual(hmap, gen_map, msg='broadwell hwlocmap %s is equal to generated map %s' % (hmap, gen_map))

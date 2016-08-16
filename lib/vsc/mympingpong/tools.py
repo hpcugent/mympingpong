@@ -64,20 +64,24 @@ def _parse_hwloc_xml(xml_fn):
 
     xml_fn is filename for xml file with hwloc-ls output in xml format
     """
-    res = {}
-
     # parse xmloutput
     base = etree().parse(xml_fn).getroottree()
 
     # gather all interesting elements and their paths
     # SB has numa -> socket -> core -> pu
     # haswell has socket -> numa -> core -> pu
+    # broadwell has package -> numa -> core -> pu
     # track elements by unique xpath
 
     elements = {}
-    for typ in ['Socket', 'NUMANode', 'Core', 'PU']:
+    for typ in ['Package', 'Socket', 'NUMANode', 'Core', 'PU']:
         xpath = './/object[@type="%s"]' % typ
         elements[typ] = dict([(base.getpath(el), int(el.get('os_index', -1))) for el in base.findall(xpath)])
+
+    # there should be either socket or package
+    # if package, rename to socket
+    if len(elements['Package']):
+        elements['Socket'] = elements['Package']
 
     def find_parent_element(typ, path):
         """
