@@ -25,18 +25,16 @@
 """
 @author: Stijn De Weirdt (Ghent University)
 
-Classes to generate pairs 
+Classes to generate pairs
 
 TODO:
- - faster generation of random pairs: 
+ - faster generation of random pairs:
   - have each rank generate a set of pairs, using as seed the main seed + the rank
   - exchange (alltoall?) the generated pairs
 """
 
-import sys
-import os
-import re
 import copy
+import re
 
 import numpy as n
 
@@ -48,8 +46,8 @@ class Pair(object):
 
         self.log = logger
 
-        self.seed=None
-        self.nextseed=None
+        self.seed = None
+        self.nextseed = None
 
         self.rng = None
         self.origrng = None
@@ -166,7 +164,7 @@ class Pair(object):
         self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
-           self.applyrngfilter(rngfilter) 
+           self.applyrngfilter(rngfilter)
 
     def applymapfilter(self,dictin,mapfilter):
         """
@@ -194,9 +192,9 @@ class Pair(object):
                     continue
                 dictout[k].append(el)
 
-        self.log.debug("pairs: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
-        return dictout 
-     
+        self.log.debug("pairs: applymapfilter: map is %s (orig: %s)", dictout, dictin)
+        return dictout
+
     def applyrngfilter(self,rngfilter):
         """
         filter rng based on information from cpumap
@@ -229,9 +227,9 @@ class Pair(object):
             self.log.error("attempted to use %s rngfilter, which is not correctly implemented", rngfilter)
             new = []
             for x in self.rng:
-                if not x in ids:
+                if x not in ids:
                     new.append(x)
-            if not self.pairid in new:
+            if self.pairid not in new:
                 new.append(self.pairid)
             new.sort()
 
@@ -251,7 +249,7 @@ class Pair(object):
         # creates a matrix of minus ones, with height = self.nr and width = 2
         res = n.ones((self.nr, 2), int)*-1
 
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+        if isinstance(self.pairid, int) and (self.pairid not in self.rng):
             self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
@@ -325,7 +323,7 @@ class Groupexcl(Pair):
             for x in rngarray:
                 if x == luckyid:
                     continue
-                if not x in ids:
+                if x not in ids:
                     neww.append(x)
             neww.sort()
 
@@ -366,7 +364,7 @@ class Hwloc(Shuffle):
 
         res = n.ones((self.nr, 2), int)*-1
 
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+        if isinstance(self.pairid, int) and (self.pairid not in self.rng):
             self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
