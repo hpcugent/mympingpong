@@ -3,6 +3,7 @@
 *~
 
 # Packages
+.eggs
 *.egg
 *.egg-info
 setup.cfg

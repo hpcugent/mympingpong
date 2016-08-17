@@ -43,6 +43,13 @@ PACKAGE = {
         'h5py',
         'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
     ],
+    # Workaround from
+    # https://github.com/numpy/numpy/issues/2434#issuecomment-65252402
+    # and
+    # https://github.com/h5py/h5py/issues/535#issuecomment-79158166
+    'setup_requires': [
+        'numpy >= 1.8.2',
+    ],
     'author': [sdw],
     'maintainer': [sdw],
 }
