@@ -8,8 +8,8 @@
 # This file is part of VSC-tools,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
 # with support of Ghent University (http://ugent.be/hpc),
-# the Flemish Supercomputer Centre (VSC) (https://vscentrum.be/nl/en),
-# the Hercules foundation (http://www.herculesstichting.be/in_English)
+# the Flemish Supercomputer Centre (VSC) (https://www.vscentrum.be),
+# the Flemish Research Foundation (FWO) (http://www.fwo.be/en)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
 # http://github.com/hpcugent/VSC-tools
@@ -34,7 +34,7 @@ from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
     'name': 'mympingpong',
-    'version': '0.7.0',
+    'version': '0.7.1',
     'install_requires': [
         'vsc-base >= 2.4.16',
         'numpy >= 1.8.2',
@@ -42,6 +42,14 @@ PACKAGE = {
         'lxml',
         'h5py',
         'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
+    ],
+    # Workaround from
+    # https://github.com/numpy/numpy/issues/2434#issuecomment-65252402
+    # and
+    # https://github.com/h5py/h5py/issues/535#issuecomment-79158166
+    'setup_requires': [
+        'numpy >= 1.8.2',
+        'nose',
     ],
     'author': [sdw],
     'maintainer': [sdw],

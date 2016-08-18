@@ -4,8 +4,8 @@
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
 # with support of Ghent University (http://ugent.be/hpc),
-# the Flemish Supercomputer Centre (VSC) (https://vscentrum.be/nl/en),
-# the Hercules foundation (http://www.herculesstichting.be/in_English)
+# the Flemish Supercomputer Centre (VSC) (https://www.vscentrum.be),
+# the Flemish Research Foundation (FWO) (http://www.fwo.be/en)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
 # https://github.com/hpcugent/mympingpong
@@ -36,7 +36,7 @@ from vsc.utils.run import run_simple
 
 
 HWLOC_LS = "hwloc-ls"
-HWLOC_LS_XML_TEMPLATE = HWLOC_LS + " --output-format xml %s"
+HWLOC_LS_XML_TEMPLATE = HWLOC_LS + " --force --output-format xml %s"
 
 
 def hwlocmap():
@@ -45,9 +45,11 @@ def hwlocmap():
 
     Returns a dict that maps the absolute Processor Unit ID to its socket-id and its core-id
     """
-    xmlout = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
+    # Only need a filename
+    (fh, xmlout) = tempfile.mkstemp(prefix="hwloc-xml-", suffix=".xml")
+    os.close(fh)
 
-    ec, txt = run_simple(HWLOC_LS_XML_TEMPLATE % xmlout)
+    run_simple(HWLOC_LS_XML_TEMPLATE % xmlout)
 
     parsed = _parse_hwloc_xml(xmlout)
 
@@ -62,20 +64,24 @@ def _parse_hwloc_xml(xml_fn):
 
     xml_fn is filename for xml file with hwloc-ls output in xml format
     """
-    res = {}
-
     # parse xmloutput
     base = etree().parse(xml_fn).getroottree()
 
     # gather all interesting elements and their paths
     # SB has numa -> socket -> core -> pu
     # haswell has socket -> numa -> core -> pu
+    # broadwell has package -> numa -> core -> pu
     # track elements by unique xpath
 
     elements = {}
-    for typ in ['Socket', 'NUMANode', 'Core', 'PU']:
+    for typ in ['Package', 'Socket', 'NUMANode', 'Core', 'PU']:
         xpath = './/object[@type="%s"]' % typ
         elements[typ] = dict([(base.getpath(el), int(el.get('os_index', -1))) for el in base.findall(xpath)])
+
+    # there should be either socket or package
+    # if package, rename to socket
+    if len(elements['Package']):
+        elements['Socket'] = elements['Package']
 
     def find_parent_element(typ, path):
         """

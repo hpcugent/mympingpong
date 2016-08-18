@@ -4,8 +4,8 @@
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
 # with support of Ghent University (http://ugent.be/hpc),
-# the Flemish Supercomputer Centre (VSC) (https://vscentrum.be/nl/en),
-# the Hercules foundation (http://www.herculesstichting.be/in_English)
+# the Flemish Supercomputer Centre (VSC) (https://www.vscentrum.be),
+# the Flemish Research Foundation (FWO) (http://www.fwo.be/en)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
 # https://github.com/hpcugent/mympingpong
@@ -36,19 +36,22 @@ class ToolsTest(TestCase):
         """Test hwlocmap"""
 
         xmlout = "/some/random/filename"
+        fh = 123
 
         with patch('vsc.mympingpong.tools._parse_hwloc_xml', return_value='randomstring') as p_h_x:
             with patch('vsc.mympingpong.tools.run_simple', return_value=(1,2)) as r_s:
-                with patch('tempfile.mkstemp', return_value=xmlout) as mkstemp:
-                    with patch('os.remove') as remove:
-                        self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
-                                         msg='hwlocmap returned output from _parse_hwloc_xml')
+                with patch('tempfile.mkstemp', return_value=(fh, xmlout)) as mkstemp:
+                    with patch('os.close') as close:
+                        with patch('os.remove') as remove:
+                            self.assertEqual('randomstring', vsc.mympingpong.tools.hwlocmap(),
+                                             msg='hwlocmap returned output from _parse_hwloc_xml')
 
         # Assert run_simple called and with args
         # Assert _parse_hwloc_xml is called
         r_s.assert_called_with(vsc.mympingpong.tools.HWLOC_LS_XML_TEMPLATE % xmlout)
         p_h_x.assert_called_with(xmlout)
         mkstemp.assert_called_with(prefix="hwloc-xml-", suffix=".xml")
+        close.assert_called_with(fh)
         remove.assert_called_with(xmlout)
 
     def get_xmlout(self, filename):
@@ -112,3 +115,22 @@ class ToolsTest(TestCase):
                         cr += 2
                         aPU += 1
         self.assertEqual(hmap, gen_map, msg='haswell cod hwlocmap %s is equal to generated map %s' % (hmap, gen_map))
+
+    def test_parse_hwloc_xml_broadwell(self):
+        """
+        Going to test _parse_hwloc_xml with hwloc from broadwell
+        """
+        hmap = self.get_xmlout('broadwell_hwloc-1.11.3-6.el7.centos.x86_64.xml')
+
+        gen_map = {}
+        aPU = 0
+        for sk in range(2): # 2 socket
+            for num in range(2): # 2 numa per socket
+                numa = sk*2 + num
+                for scr in range(8): # 7 cores per numa domain, but core 7 doesn't exist
+                    if scr == 7:
+                        continue
+                    cr = 8*num + scr
+                    gen_map[aPU] = "socket %s core %s abscore %s numa %s" % (sk, cr, aPU, numa)
+                    aPU += 1
+        self.assertEqual(hmap, gen_map, msg='broadwell hwlocmap %s is equal to generated map %s' % (hmap, gen_map))

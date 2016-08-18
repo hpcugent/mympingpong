@@ -5,8 +5,8 @@
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
 # with support of Ghent University (http://ugent.be/hpc),
-# the Flemish Supercomputer Centre (VSC) (https://vscentrum.be/nl/en),
-# the Hercules foundation (http://www.herculesstichting.be/in_English)
+# the Flemish Supercomputer Centre (VSC) (https://www.vscentrum.be),
+# the Flemish Research Foundation (FWO) (http://www.fwo.be/en)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
 # https://github.com/hpcugent/mympingpong
@@ -33,15 +33,12 @@ Generate plots from output from mympingpong.py
 import bisect
 import os
 import sys
-from math import sqrt
 
 import h5py
 import matplotlib as mp
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.gridspec as gridspec
 import numpy as n
-from matplotlib.colorbar import Colorbar, make_axes
 
 from vsc.utils.generaloption import simple_option
 
@@ -86,8 +83,8 @@ class PingPongAnalysis(object):
         self.log.debug("collect count: %s" % self.count)
 
         data = f['data'][..., 1]
-        data = data*self.scaling
-        data = data/n.where(self.count == 0, 1, self.count)
+        data = data * self.scaling
+        data = data / n.where(self.count == 0, 1, self.count)
         self.data = n.ma.array(data)
         self.log.debug("collect data: %s" % data)
 
@@ -99,22 +96,20 @@ class PingPongAnalysis(object):
     def setticks(self, nrticks, length, sub):
         """make and set evenly spaced ticks for the subplot, that excludes zero and max"""
         ticks = [0] * nrticks
-        normalizer =  length / (nrticks+1)
+        normalizer = length / (nrticks + 1)
         for i in range(nrticks):
-            ticks[i] = round((i+1) * normalizer)
+            ticks[i] = round((i + 1) * normalizer)
 
         sub.set_xticks(ticks)
         sub.set_yticks(ticks)
 
-    def addtext(self, meta, sub, fig):
+    def addtext(self, meta, sub):
         """parse, make and show the metadata"""
         sub.set_axis_off()
 
         # build a rectangle in axes coords
         left, width = .1, .9
         bottom, height = .1, .9
-        right = left + width
-        top = bottom + height
 
         COLUMNS = 3
         tags = self.meta.keys()
@@ -122,16 +117,16 @@ class PingPongAnalysis(object):
         while nrmeta % COLUMNS != 0:
             nrmeta += 1
             tags.append(None)
-        layout = n.array(tags).reshape(nrmeta/COLUMNS, COLUMNS)
+        layout = n.array(tags).reshape(nrmeta / COLUMNS, COLUMNS)
 
-        for r in range(nrmeta/COLUMNS):
+        for r in range(nrmeta / COLUMNS):
             for c in range(COLUMNS):
                 m = layout[r][c]
-                if not (m and meta.has_key(m)):
+                if not m or m not in meta:
                     continue
                 val = meta[m]
                 unit = ' sec' if m == 'timing' else ''
-                sub.text(left+c*width/COLUMNS, bottom+r*height/(nrmeta/COLUMNS), "%s: %s%s" %
+                sub.text(left + c * width / COLUMNS, bottom + r * height / (nrmeta / COLUMNS), "%s: %s%s" %
                          (m, val, unit), horizontalalignment='left', verticalalignment='top', transform=sub.transAxes)
 
     def addlatency(self, data, sub, fig):
@@ -151,13 +146,13 @@ class PingPongAnalysis(object):
 
         return vmin, vmax
 
-    def addglobalhistogram(self, data, sub, fig1, vextrema):
+    def addglobalhistogram(self, data, sub, vextrema):
         """parse, make and show the histogram of all data"""
         DEFAULTCOLOR = (0.5, 0.5, 0.5, 1)
 
         # filter out zeros and data that is too small or too large to show with the selected scaling
-        d = n.ma.masked_outside(data.ravel(), 1/self.scaling, 1.0*self.scaling)
-        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
+        d = n.ma.masked_outside(data.ravel(), 1 / self.scaling, 1.0 * self.scaling)
+        (_, binedges, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
 
         # We don't want the very first binedge
         binedges = binedges[1:]
@@ -165,13 +160,13 @@ class PingPongAnalysis(object):
         lmask = self.latencymask
         bisect_edges = lambda x: bisect.bisect(binedges, x)
         vmin_ind, vmax_ind = map(bisect_edges, vextrema)
-        colorrange = vmax_ind-vmin_ind
+        colorrange = vmax_ind - vmin_ind
 
         # create an array of cmapvalues for every bin according to its corresponding cmapvalue from the latency graph
         # if the bin falls outside the mask interval it is colored grey.
         # if the bin falls outside the scale interval, color it dark blue or dark red instead
-        colors = [DEFAULTCOLOR]*vmin_ind + [self.cmap(1.*i/colorrange)
-                                            for i in range(colorrange)] + [DEFAULTCOLOR]*(self.bins-vmax_ind)
+        colors = [DEFAULTCOLOR] * vmin_ind + [self.cmap(1. * i / colorrange)
+                                              for i in range(colorrange)] + [DEFAULTCOLOR] * (self.bins - vmax_ind)
 
         if lscale != INTERVAL_NONE:
             coloredges = (0, binedges[-1]) if lmask == INTERVAL_NONE else (lmask[0], lmask[1])
@@ -199,9 +194,9 @@ class PingPongAnalysis(object):
 
         # get the cmapvalue of the color edges (on a scale from 0.0 to 1.0)
         if lscale != INTERVAL_NONE and lmask != INTERVAL_NONE:
-            coloredges = (float(lmask0_ind-lscale0_ind), float(lmask1_ind-lscale0_ind))
+            coloredges = (float(lmask0_ind - lscale0_ind), float(lmask1_ind - lscale0_ind))
             if lscale1_ind != lscale0_ind:
-                coloredges = tuple([x/(lscale1_ind-lscale0_ind) for x in coloredges])
+                coloredges = tuple([x / (lscale1_ind - lscale0_ind) for x in coloredges])
         else:
             coloredges = (0.0, 1.0)
 
@@ -212,13 +207,13 @@ class PingPongAnalysis(object):
         self.log.debug("overwriting %s to %s with %s", begin, end, color)
         return [color if i >= begin and i < end else c for i, c in enumerate(colors)]
 
-    def addmaskedhistogram(self, data, sub, fig1, coloredges):
+    def addmaskedhistogram(self, data, sub, coloredges):
         """parse, make and show the histogram of the data that falls in the maks interval"""
         # filter out zeros and the data that falls outside of the mask interval
         d = n.ma.masked_outside(n.ma.masked_equal(data.ravel(), 0), self.latencymask[0], self.latencymask[1])
-        (nn, binedges, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
+        (_, _, patches) = sub.hist(n.ma.compressed(d), bins=self.bins)
 
-        binwidth = (coloredges[1]-coloredges[0]) / self.bins
+        binwidth = (coloredges[1] - coloredges[0]) / self.bins
         self.log.debug("binwidth: %s, color edge 0: %s, color edge 1: %s", binwidth, coloredges[0], coloredges[1])
 
         # color every bin according to its corresponding cmapvalue from the latency graph
@@ -236,7 +231,7 @@ class PingPongAnalysis(object):
         """parse, make and show the sample size graph"""
         maskedcount = n.ma.masked_where(count == 0, count)
         cax = sub.imshow(maskedcount, cmap=self.cmap, interpolation='nearest', vmin=0, origin='lower')
-        cb = fig.colorbar(cax)
+        fig.colorbar(cax)
         self.setticks(3, n.size(count, 0), sub)
         sub.set_title('Pair samples (#)')
 
@@ -244,7 +239,7 @@ class PingPongAnalysis(object):
         """parse, make and show the standard deviation graph"""
         maskedconsistency = n.ma.masked_where(consistency == 0, consistency)
         cax = sub.imshow(maskedconsistency, cmap=self.cmap, interpolation='nearest', vmin=0, origin='lower')
-        cb = fig.colorbar(cax)
+        fig.colorbar(cax)
         self.setticks(3, n.size(consistency, 0), sub)
         sub.set_title('standard deviation')
 
@@ -260,17 +255,17 @@ class PingPongAnalysis(object):
 
         gs1 = gridspec.GridSpec(10, 10, left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.05, hspace=0.6)
         vextrema = self.addlatency(self.data, plt.subplot(gs1[0:8, 0:5]), fig1)
-        coloredges = self.addglobalhistogram(self.data, plt.subplot(gs1[8:10, 0:4]), fig1, vextrema)
+        coloredges = self.addglobalhistogram(self.data, plt.subplot(gs1[8:10, 0:4]), vextrema)
         self.addtext(self.meta, plt.subplot(gs1[0:1, 5:10]), fig1)
         self.addsamplesize(self.count, plt.subplot(gs1[1:4, 5:7]), fig1)
         self.addconsistency(self.consistency, plt.subplot(gs1[1:4, 7:9]), fig1)
         if self.latencymask != INTERVAL_NONE:
-            self.addmaskedhistogram(self.data, plt.subplot(gs1[8:10, 5:9]), fig1, coloredges)
+            self.addmaskedhistogram(self.data, plt.subplot(gs1[8:10, 5:9]), coloredges)
 
         fig1.canvas.draw()
 
         if save:
-            filename, ext = os.path.splitext(fn)
+            filename, _ = os.path.splitext(fn)
             if lscale is not INTERVAL_NONE:
                 filename = "%s-scale%s-%s" % (filename, lscale[0], lscale[1])
             if lmask is not INTERVAL_NONE:

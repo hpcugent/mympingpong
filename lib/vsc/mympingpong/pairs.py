@@ -4,8 +4,8 @@
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
 # with support of Ghent University (http://ugent.be/hpc),
-# the Flemish Supercomputer Centre (VSC) (https://vscentrum.be/nl/en),
-# the Hercules foundation (http://www.herculesstichting.be/in_English)
+# the Flemish Supercomputer Centre (VSC) (https://www.vscentrum.be),
+# the Flemish Research Foundation (FWO) (http://www.fwo.be/en)
 # and the Department of Economy, Science and Innovation (EWI) (http://www.ewi-vlaanderen.be/en).
 #
 # https://github.com/hpcugent/mympingpong
@@ -25,22 +25,21 @@
 """
 @author: Stijn De Weirdt (Ghent University)
 
-Classes to generate pairs 
+Classes to generate pairs
 
 TODO:
- - faster generation of random pairs: 
+ - faster generation of random pairs:
   - have each rank generate a set of pairs, using as seed the main seed + the rank
   - exchange (alltoall?) the generated pairs
 """
 
-import sys
-import os
-import re
 import copy
+import re
 
 import numpy as n
 
 from vsc.utils.missing import get_subclasses
+
 
 class Pair(object):
 
@@ -48,8 +47,8 @@ class Pair(object):
 
         self.log = logger
 
-        self.seed=None
-        self.nextseed=None
+        self.seed = None
+        self.nextseed = None
 
         self.rng = None
         self.origrng = None
@@ -81,16 +80,16 @@ class Pair(object):
                 return cls(seed, rng, pairid, logger)
         raise KeyError
 
-    def setseed(self,seed=None):
+    def setseed(self, seed=None):
         """set the seed for n.random"""
 
         if isinstance(seed, int):
             n.random.seed(seed)
-            self.seed=seed
-            self.nextseed=n.random.random_integers(10000000)
-            self.log.debug("Seed is %s. Nextseed is %s"%(self.seed, self.nextseed))
+            self.seed = seed
+            self.nextseed = n.random.random_integers(10000000)
+            self.log.debug("Seed is %s. Nextseed is %s", self.seed, self.nextseed)
         else:
-            self.log.debug("Seed: nothing done: %s (%s)"%(seed,type(seed)))
+            self.log.debug("Seed: nothing done: %s (%s)", seed, type(seed))
 
     def setpairid(self, pairid):
         if isinstance(pairid, int):
@@ -101,7 +100,7 @@ class Pair(object):
 
     def setnr(self, nr=None):
         if not nr:
-            nr = int(self.rng/2)+1
+            nr = int(self.rng / 2) + 1
         self.nr = nr
         self.log.debug("pairs: Number of samples: %s", nr)
 
@@ -157,7 +156,7 @@ class Pair(object):
         self.revmap = {}
         for ind, l in enumerate(self.cpumap):
             for p in l:
-                if not self.revmap.has_key(p):
+                if p not in self.revmap:
                     self.revmap[p] = []
                 if ind in self.revmap[p]:
                     self.log.error("setcpumap: already found id %s in revmap for property %s: %s", ind, p, self.revmap)
@@ -166,9 +165,9 @@ class Pair(object):
         self.log.debug("pairs: setcpumap: revmap is %s", self.revmap)
 
         if rngfilter:
-           self.applyrngfilter(rngfilter) 
+            self.applyrngfilter(rngfilter)
 
-    def applymapfilter(self,dictin,mapfilter):
+    def applymapfilter(self, dictin, mapfilter=None):
         """
         filter out the keyvalue pairs in dictin that contain $mapfilter
         mapfilter is currently never used, so this block can be discarded if the feature is scrapped
@@ -178,8 +177,8 @@ class Pair(object):
 
         self.log.debug("pairs: applymapfilter: mapfilter %s" % mapfilter)
         try:
-            reg = re.compile(r""+mapfilter)
-        except Exception as err:
+            reg = re.compile(r"" + mapfilter)
+        except re.error as err:
             self.log.error("applymapfilter: problem with compiling the regex for mapfilter %s:%s", mapfilter, err)
 
         for k, els in dictin.items():
@@ -194,10 +193,10 @@ class Pair(object):
                     continue
                 dictout[k].append(el)
 
-        self.log.debug("pairs: applymapfilter: map is %s (orig: %s)", dictout, dictin)   
-        return dictout 
-     
-    def applyrngfilter(self,rngfilter):
+        self.log.debug("pairs: applymapfilter: map is %s (orig: %s)", dictout, dictin)
+        return dictout
+
+    def applyrngfilter(self, rngfilter):
         """
         filter rng based on information from cpumap
 
@@ -210,7 +209,7 @@ class Pair(object):
         self.log.debug("pairs: applyrngfilter: rngfilter %s", rngfilter)
         try:
             props = self.cpumap[self.pairid]
-        except KeyError as err:
+        except KeyError as _:
             props = []
             self.log.debug("pairs: No props found for id %s", self.pairid)
 
@@ -229,9 +228,9 @@ class Pair(object):
             self.log.error("attempted to use %s rngfilter, which is not correctly implemented", rngfilter)
             new = []
             for x in self.rng:
-                if not x in ids:
+                if x not in ids:
                     new.append(x)
-            if not self.pairid in new:
+            if self.pairid not in new:
                 new.append(self.pairid)
             new.sort()
 
@@ -249,9 +248,9 @@ class Pair(object):
         self.filterrng()
 
         # creates a matrix of minus ones, with height = self.nr and width = 2
-        res = n.ones((self.nr, 2), int)*-1
+        res = n.ones((self.nr, 2), int) * -1
 
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+        if isinstance(self.pairid, int) and (self.pairid not in self.rng):
             self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
@@ -262,7 +261,7 @@ class Pair(object):
         self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
 
-    def new(self):
+    def new(self, rngarray, iteration):  # pylint: disable-msg=W0613
         self.log.error("New not implemented for mode %s", self.mode)
 
 
@@ -271,13 +270,13 @@ class Shift(Pair):
 
     def new(self, rngarray, iteration):
         # shift through rngarray and convert to a matrix with height = len(self.rng)/2 and width = 2
-        b = n.roll(rngarray, self.offset+iteration).reshape(len(self.rng)/2, 2)
+        b = n.roll(rngarray, self.offset + iteration).reshape(len(self.rng) / 2, 2)
 
         try:
             # n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
             # b[n.where(b == self.pairid)[0][0]] is the first element of b that equals pairid
             res = b[n.where(b == self.pairid)[0][0]]
-        except Exception as err:
+        except IndexError as _:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
         return res
 
@@ -290,11 +289,11 @@ class Shuffle(Pair):
         n.random.shuffle(rngarray)
 
         # convert to matrix with height len(self.rng)/2 and width 2
-        b = rngarray.reshape(len(self.rng)/2, 2)
+        b = rngarray.reshape(len(self.rng) / 2, 2)
 
         try:
             res = b[n.where(b == self.pairid)[0][0]]
-        except Exception as err:
+        except IndexError as _:
             self.log.error("new: failed to pick element for id %s from %s", self.pairid, b)
         return res
 
@@ -313,7 +312,7 @@ class Groupexcl(Pair):
 
             try:
                 props = self.cpumap[luckyid]
-            except KeyError as err:
+            except IndexError as _:
                 props = []
                 self.log.debug("pairs: new: No props found for id %s", luckyid)
             ids = []
@@ -325,7 +324,7 @@ class Groupexcl(Pair):
             for x in rngarray:
                 if x == luckyid:
                     continue
-                if not x in ids:
+                if x not in ids:
                     neww.append(x)
             neww.sort()
 
@@ -364,16 +363,16 @@ class Hwloc(Shuffle):
         hwlocs.sort()
         self.log.debug("pairs: makepairs: hwlocs %s" % hwlocs)
 
-        res = n.ones((self.nr, 2), int)*-1
+        res = n.ones((self.nr, 2), int) * -1
 
-        if isinstance(self.pairid, int) and (not self.pairid in self.rng):
+        if isinstance(self.pairid, int) and (self.pairid not in self.rng):
             self.log.debug("pairs: makepairs: %s not in list of ranks", self.pairid)
             return res
 
         hwlocid = 0
 
         subgroup = 10
-        for i in xrange(self.nr/subgroup):
+        for i in xrange(self.nr / subgroup):
             # restore rng
             self.rng = copy.deepcopy(self.origrng)
 
@@ -384,9 +383,9 @@ class Hwloc(Shuffle):
 
             a = n.array(self.rng)
             for j in xrange(subgroup):
-                res[i*subgroup+j] = self.new(a, i*subgroup+j)
+                res[i * subgroup + j] = self.new(a, i * subgroup + j)
 
-            hwlocid = (hwlocid+1) % (len(hwlocs))
+            hwlocid = (hwlocid + 1) % (len(hwlocs))
 
         self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
         return res
