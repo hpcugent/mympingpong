@@ -36,7 +36,6 @@ import array
 import time
 import datetime
 import os
-import re
 import signal
 import sys
 from itertools import permutations
@@ -97,7 +96,7 @@ class MyPingPong(object):
 
     def setrankaffinity(self):
         """pins the rank to an available core on its node"""
-        ranknodes = self.comm.alltoall([self.name]*self.size)
+        ranknodes = self.comm.alltoall([self.name] * self.size)
         ranksonnode = [i for i, j in enumerate(ranknodes) if j == self.name]
 
         rankaffinity = sched_getaffinity()
@@ -123,7 +122,7 @@ class MyPingPong(object):
         self.log.debug("affinity post-set: %s", rankaffinity)
         return str(rankaffinity)
 
-    def abort(self, signum, frame):
+    def abort(self, sig, frame):  # pylint: disable-msg=W0613
         """intercepts a SIGUSR1 signal."""
         self.log.warning("received abortsignal on rank %s", self.rank)
         self.abortsignal = True
@@ -277,14 +276,13 @@ class MyPingPong(object):
 
             if self.rank == 0 and logok:
                 progress = int(float(runid)*100/self.nr)
-                hashes = progress/5
                 self.log.debug("run %s/%s (%s%%)", runid*self.size, self.nr*self.size, progress)
 
             key = tuple(pair)
             try:
                 count, old_timingdata = data.get(key, (0, 0))
                 data[key] = (count + 1, n.append(old_timingdata, timingdata))
-            except KeyError as err:
+            except KeyError as _:
                 self.log.error("pair %s is not in permutation", key)
             if (-1 in key) or (-2 in key):
                 fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
@@ -383,7 +381,7 @@ class MyPingPong(object):
                 self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
         dataset = f.create_dataset('data', (self.size, self.size, len(data.values()[0])), 'f')
-        for ind, ((sendrank, recvrank), val) in enumerate(data.items()):
+        for ((sendrank, recvrank), val) in data.items():
             if sendrank != self.rank:
                 # we only use the timingdata if the current rank is the sender
                 continue

@@ -36,6 +36,7 @@ import numpy
 from mpi4py import MPI
 from vsc.utils.missing import get_subclasses
 
+
 class PingPongSR(object):
     """standard pingpong"""
 
@@ -59,6 +60,10 @@ class PingPongSR(object):
 
         self.run1 = None
         self.run2 = None
+
+        self.it = None
+        self.start = None
+        self.end = None
 
         self.setsr()
 
@@ -85,12 +90,12 @@ class PingPongSR(object):
         self.sndbuf = dat
         self.rcvbuf = copy.deepcopy(self.sndbuf)
 
-    def setit(self, it):
+    def setit(self, it, group=None):  # pylint: disable-msg=W0613
         self.it = it
         self.start = numpy.zeros(it, float)
         self.end = numpy.zeros(it, float)
 
-    def dopingpong(self, it=None):
+    def dopingpong(self, it=None, group=None):  # pylint: disable-msg=W0613
         if it:
             self.setit(it)
 
@@ -100,7 +105,8 @@ class PingPongSR(object):
             self.run2(self.rcvbuf, self.other, self.tag2)
             self.end[x] = MPI.Wtime()
 
-        return numpy.average((self.end-self.start)/(2.0*self.group))
+        return numpy.average((self.end - self.start) / (2.0 * self.group))
+
 
 class PingPongRS(PingPongSR):
     """standard pingpong"""
@@ -120,8 +126,8 @@ class PingPongSRfast(PingPongSR):
     def setcomm(self):
         self.run1 = self.send
 
-    def setit(self, itall, group):
-        it = itall/group
+    def setit(self, itall, group=None):
+        it = itall / group
         self.group = group
         self.it = itall
         self.start = numpy.zeros(it, float)
@@ -140,13 +146,13 @@ class PingPongSRfast(PingPongSR):
         else:
             self.log.debug("dopingpong: number of iterations is not set")
 
-        for x in xrange(it/group):
+        for x in xrange(it / group):
             """
-            Comm.PingpongSR(self, 
-                            rbuf, sbuf, 
-                            int rsource=0, int sdest=0,  
-                            int rtag=0, int stag=0, 
-                            int num=1, 
+            Comm.PingpongSR(self,
+                            rbuf, sbuf,
+                            int rsource=0, int sdest=0,
+                            int rtag=0, int stag=0,
+                            int num=1,
                             Status rstatus=None)
             """
             start, end = self.run1(self.rcvbuf, self.sndbuf,
@@ -156,7 +162,7 @@ class PingPongSRfast(PingPongSR):
             self.start[x] = start
             self.end[x] = end
 
-        return numpy.average((self.end-self.start)/(2.0*self.group))
+        return numpy.average((self.end - self.start) / (2.0 * self.group))
 
 
 class PingPongRSfast(PingPongSRfast):
@@ -211,7 +217,7 @@ class PingPongRSfast2(PingPongRSfast):
 
 class PingPongtest(PingPongSR):
 
-    def dopingpong(self, it):
+    def dopingpong(self, it=None, group=None):  # pylint: disable-msg=W0613
         for x in xrange(it):
             self.start[x] = MPI.Wtime()
             self.end[x] = MPI.Wtime()
