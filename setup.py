@@ -66,6 +66,8 @@ if sys.version_info < (2, 7):
     # numpy also dropped support for python < 2.7 in version 1.11.0
     idx = [i for i, x in enumerate(PACKAGE['install_requires']) if x.startswith('numpy')]
     PACKAGE['install_requires'][idx[0]] += ', < 1.11.0'
+    idx = [i for i, x in enumerate(PACKAGE['setup_requires']) if x.startswith('numpy')]
+    PACKAGE['setup_requires'][idx[0]] += ', < 1.11.0'
 
 if __name__ == '__main__':
     action_target(PACKAGE)
