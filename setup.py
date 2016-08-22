@@ -30,6 +30,8 @@
 Setup for mympingpong
 """
 
+import sys
+
 from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
@@ -41,19 +43,31 @@ PACKAGE = {
         'matplotlib >= 1.3.1',
         'lxml',
         'h5py',
-        'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
+        'mpi4py < 2.0.0',  # the patched one to run, for analysis, this is ok (and not used)
     ],
     # Workaround from
     # https://github.com/numpy/numpy/issues/2434#issuecomment-65252402
     # and
     # https://github.com/h5py/h5py/issues/535#issuecomment-79158166
     'setup_requires': [
+        'mock',
         'numpy >= 1.8.2',
         'nose',
     ],
     'author': [sdw],
     'maintainer': [sdw],
 }
+
+if sys.version_info < (2, 7):
+    # matplotlib dropped support for python < 2.7 in version 2.0.0
+    idx = [i for i, x in enumerate(PACKAGE['install_requires']) if x.startswith('matplotlib')]
+    PACKAGE['install_requires'][idx[0]] += ', < 2.0.0'
+
+    # numpy also dropped support for python < 2.7 in version 1.11.0
+    idx = [i for i, x in enumerate(PACKAGE['install_requires']) if x.startswith('numpy')]
+    PACKAGE['install_requires'][idx[0]] += ', < 1.11.0'
+    idx = [i for i, x in enumerate(PACKAGE['setup_requires']) if x.startswith('numpy')]
+    PACKAGE['setup_requires'][idx[0]] += ', < 1.11.0'
 
 if __name__ == '__main__':
     action_target(PACKAGE)
