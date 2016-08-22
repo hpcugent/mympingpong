@@ -52,7 +52,7 @@ PACKAGE = {
     'setup_requires': [
         'numpy >= 1.8.2',
     ],
-    'test_require': [
+    'tests_require': [
         'mock',
         'nose',
     ],
