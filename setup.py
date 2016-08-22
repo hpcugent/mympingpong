@@ -30,6 +30,8 @@
 Setup for mympingpong
 """
 
+import sys
+
 from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
@@ -41,7 +43,7 @@ PACKAGE = {
         'matplotlib >= 1.3.1',
         'lxml',
         'h5py',
-        'mpi4py < 2.0.0', # the patched one to run, for analysis, this is ok (and not used)
+        'mpi4py < 2.0.0',  # the patched one to run, for analysis, this is ok (and not used)
     ],
     # Workaround from
     # https://github.com/numpy/numpy/issues/2434#issuecomment-65252402
@@ -54,6 +56,11 @@ PACKAGE = {
     'author': [sdw],
     'maintainer': [sdw],
 }
+
+# matplotlib dropped support for python < 2.7 in version 2.0.0
+if sys.version_info < (2, 7):
+    idx = [i for i, x in enumerate(PACKAGE['install_requires']) if x.startswith('matplotlib')]
+    PACKAGE['install_requires'][idx[0]] += ', < 2.0.0'
 
 if __name__ == '__main__':
     action_target(PACKAGE)
