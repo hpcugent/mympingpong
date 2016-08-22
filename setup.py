@@ -50,6 +50,7 @@ PACKAGE = {
     # and
     # https://github.com/h5py/h5py/issues/535#issuecomment-79158166
     'setup_requires': [
+        'mock',
         'numpy >= 1.8.2',
         'nose',
     ],
