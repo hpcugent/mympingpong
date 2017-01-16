@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2010-2016 Ghent University
+# Copyright 2010-2017 Ghent University
 #
 # This file is part of mympingpong,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
