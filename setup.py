@@ -36,7 +36,7 @@ from vsc.install.shared_setup import action_target, sdw
 
 PACKAGE = {
     'name': 'mympingpong',
-    'version': '0.7.1',
+    'version': '0.8.0',
     'install_requires': [
         'vsc-base >= 2.4.16',
         'numpy >= 1.8.2',
