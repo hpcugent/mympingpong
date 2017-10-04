@@ -305,7 +305,7 @@ class MyPingPong(object):
         if parallel_io or self.rank == 0:
             self.writehdf5(data, attrs, failed, fail, parallel_io=parallel_io)
         else:
-            self.log.debug("sending data to master rank...")
+            self.log.debug("sending data to master rank (blocking until master rank receives)...")
             self.comm.send((self.rank, self.name, self.core, self.size, data, failed, fail), dest=0, tag=123)
             self.log.debug("data sent to master rank!")
 
@@ -377,7 +377,7 @@ class MyPingPong(object):
         if not parallel_io:
             # receive data for other (n-1) ranks
             for rank in range(self.size)[1:]:
-                self.log.debug("receiving data from rank %d...", rank)
+                self.log.debug("receiving data from rank %d (blocking MPI recv)...", rank)
                 foo = self.comm.recv(source=rank, tag=123)
                 self.log.debug("data from rank %d received!", rank)
                 all_tuples.append(foo)
