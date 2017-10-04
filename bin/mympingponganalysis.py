@@ -256,7 +256,7 @@ class PingPongAnalysis(object):
         gs1 = gridspec.GridSpec(10, 10, left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.05, hspace=0.6)
         vextrema = self.addlatency(self.data, plt.subplot(gs1[0:8, 0:5]), fig1)
         coloredges = self.addglobalhistogram(self.data, plt.subplot(gs1[8:10, 0:4]), vextrema)
-        self.addtext(self.meta, plt.subplot(gs1[0:1, 5:10]), fig1)
+        self.addtext(self.meta, plt.subplot(gs1[0:1, 5:10]))
         self.addsamplesize(self.count, plt.subplot(gs1[1:4, 5:7]), fig1)
         self.addconsistency(self.consistency, plt.subplot(gs1[1:4, 7:9]), fig1)
         if self.latencymask != INTERVAL_NONE:
