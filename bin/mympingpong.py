@@ -224,7 +224,7 @@ class MyPingPong(object):
 
         return attrs, mypairs, data
 
-    def run(self, abort_check=True, seed=1, msgsize=1024, maxruntime=0):
+    def run(self, abort_check=True, seed=1, msgsize=1024, maxruntime=0, parallel_io=True):
         """
         sets up and runs the main test loop
 
@@ -302,7 +302,12 @@ class MyPingPong(object):
             'ppgroup': group,
         })
 
-        self.writehdf5(data, attrs, failed, fail)
+        if parallel_io or self.rank == 0:
+            self.writehdf5(data, attrs, failed, fail, parallel_io=parallel_io)
+        else:
+            self.log.debug("sending data to master rank...")
+            self.comm.send((self.rank, self.name, self.core, self.size, data, failed, fail), dest=0, tag=123)
+            self.log.debug("data sent to master rank!")
 
     def pingpong(self, p1, p2, pmode='fast2', dat=None, dummyfirst=False, test=False):
         """
@@ -352,7 +357,7 @@ class MyPingPong(object):
         timingdata = pp.dopingpong(self.it)
         return timingdata, pp.group
 
-    def writehdf5(self, data, attributes, failed, fail, remove=True):
+    def writehdf5(self, data, attributes, failed, fail, remove=True, parallel_io=True):
         """
         writes data to a .h5 defined by the -f parameter
 
@@ -366,6 +371,17 @@ class MyPingPong(object):
         """
         filename = self.fn
 
+        # receive data from other ranks
+        all_tuples = [(self.rank, self.name, self.core, self.size, data, failed, fail)]
+
+        if not parallel_io:
+            # receive data for other (n-1) ranks
+            for rank in range(self.size)[1:]:
+                self.log.debug("receiving data from rank %d...", rank)
+                foo = self.comm.recv(source=rank, tag=123)
+                self.log.debug("data from rank %d received!", rank)
+                all_tuples.append(foo)
+
         if remove and os.path.exists(filename):
             try:
                 MPI.File.Delete(filename)
@@ -373,7 +389,10 @@ class MyPingPong(object):
                 self.log.error("Failed to delete file %s: %s" % (filename, err))
                 filename = "_%s" % filename
 
-        f = h5py.File(filename, 'w', driver='mpio', comm=self.comm)
+        if parallel_io:
+            f = h5py.File(filename, 'w', driver='mpio', comm=self.comm)
+        else:
+            f = h5py.File(filename, 'w')
 
         for k, v in attributes.items():
             f.attrs[k] = v
@@ -381,19 +400,25 @@ class MyPingPong(object):
                 self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
         dataset = f.create_dataset('data', (self.size, self.size, len(data.values()[0])), 'f')
-        for ((sendrank, recvrank), val) in data.items():
-            if sendrank != self.rank:
-                # we only use the timingdata if the current rank is the sender
-                continue
-            dataset[sendrank, recvrank] = tuple(val)
-
-        if failed:
-            failset = f.create_dataset('fail', (self.size, self.size), dtype='i8')
-            failset[self.rank] = fail[self.rank]
-
         STR_LEN = 64
         rankname = f.create_dataset('rankdata', (self.size, 2), dtype='S%s' % str(STR_LEN))
-        rankname[self.rank] = (self.fitstr(self.name, STR_LEN), self.fitstr(self.core, STR_LEN))
+
+        if any(t[5] for t in all_tuples):
+            failset = f.create_dataset('fail', (self.size, self.size), dtype='i8')
+
+        for (rank, name, core, size, data, failed, fail) in all_tuples:
+            self.log.debug("writing data for rank %d to file (%s)", rank, filename)
+            for ((sendrank, recvrank), val) in data.items():
+                if sendrank != rank:
+                    # we only use the timingdata if the current rank is the sender
+                    continue
+                dataset[sendrank, recvrank] = tuple(val)
+
+            if failed:
+                failset[rank] = fail[rank]
+
+            rankname[rank] = (self.fitstr(name, STR_LEN), self.fitstr(core, STR_LEN))
+            self.log.debug("done writing data for rank %d", rank)
 
         f.close()
 
@@ -413,6 +438,7 @@ if __name__ == '__main__':
         'maxruntime': ('set the maximum runtime of pingpong in seconds \
                        (default will run infinitely)', int, 'store', 0, 't'),
         'abort_check': ('check for abort signals or maxruntime', '', 'store_true', True, 'a'),
+        'parallel-io': ("Create output *.h5 using parallel IO", '', 'store_true', True),
     }
 
     go = simple_option(options)
@@ -437,6 +463,7 @@ if __name__ == '__main__':
         mpp.setpairmode(pairmode=go.options.groupmode)
 
     mpp.run(abort_check=go.options.abort_check, seed=go.options.seed,
-            msgsize=go.options.messagesize, maxruntime=go.options.maxruntime)
+            msgsize=go.options.messagesize, maxruntime=go.options.maxruntime,
+            parallel_io=go.options.parallel_io)
 
     go.log.info("data written to %s", mpp.fn)
