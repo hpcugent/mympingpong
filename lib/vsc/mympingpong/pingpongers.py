@@ -99,7 +99,7 @@ class PingPongSR(object):
         if it:
             self.setit(it)
 
-        for x in xrange(self.it):
+        for x in range(self.it):
             self.start[x] = MPI.Wtime()
             self.run1(self.sndbuf, self.other, self.tag1)
             self.run2(self.rcvbuf, self.other, self.tag2)
@@ -127,7 +127,7 @@ class PingPongSRfast(PingPongSR):
         self.run1 = self.send
 
     def setit(self, itall, group=None):
-        it = itall / group
+        it = itall // group
         self.group = group
         self.it = itall
         self.start = numpy.zeros(it, float)
@@ -146,7 +146,7 @@ class PingPongSRfast(PingPongSR):
         else:
             self.log.debug("dopingpong: number of iterations is not set")
 
-        for x in xrange(it / group):
+        for x in range(it // group):
             """
             Comm.PingpongSR(self,
                             rbuf, sbuf,
@@ -218,7 +218,7 @@ class PingPongRSfast2(PingPongRSfast):
 class PingPongtest(PingPongSR):
 
     def dopingpong(self, it=None, group=None):  # pylint: disable-msg=W0613
-        for x in xrange(it):
+        for x in range(it):
             self.start[x] = MPI.Wtime()
             self.end[x] = MPI.Wtime()
         return self.start, self.end
