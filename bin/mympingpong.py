@@ -406,7 +406,6 @@ class MyPingPong(object):
                 self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
         data_cnt = len(list(data.values())[0])
-        print("data_cnt: %s" % data_cnt)
         dataset = f.create_dataset('data', (self.size, self.size, data_cnt), 'f')
         STR_LEN = 64
         rankname = f.create_dataset('rankdata', (self.size, 2), dtype='S%s' % str(STR_LEN))
@@ -420,7 +419,6 @@ class MyPingPong(object):
                 if sendrank != rank:
                     # we only use the timingdata if the current rank is the sender
                     continue
-                print("sendrank: %s, recvrank: %s (%s)" % (sendrank, recvrank, val))
                 dataset[sendrank, recvrank] = tuple(val)
 
             if failed:
@@ -432,7 +430,16 @@ class MyPingPong(object):
         f.close()
 
     def fitstr(self, string, length):
-        return '{message: <{fill}}'.format(message=string[0:length], fill=length)
+        """Pad string value with spaces until it has specified length."""
+
+        msg = '{message: <{fill}}'.format(message=string[0:length], fill=length)
+
+        # encode('utf8') fixes "TypeError: No conversion path for dtype: dtype('<U64')"
+        # with older h5py versions when using Python 3, see https://github.com/h5py/h5py/issues/289
+        if sys.version_info > (3,):
+            msg = msg.encode('utf8')
+
+        return msg
 
 
 if __name__ == '__main__':
