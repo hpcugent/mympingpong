@@ -114,7 +114,7 @@ class Pair(object):
         step: if rng is a list and step is given, only write every $step element to self.rng
         """
         if isinstance(rng, int):
-            self.rng = range(start, rng, step)
+            self.rng = list(range(start, rng, step))
         elif isinstance(rng, list):
             self.rng = rng[start::step]
         else:
@@ -255,7 +255,7 @@ class Pair(object):
             return res
 
         rngarray = n.array(self.rng)
-        for i in xrange(self.nr):
+        for i in range(self.nr):
             res[i] = self.new(rngarray, i)
 
         self.log.debug("pairs: makepairs %s returns\n%s", self.pairid, res.transpose())
@@ -270,7 +270,7 @@ class Shift(Pair):
 
     def new(self, rngarray, iteration):
         # shift through rngarray and convert to a matrix with height = len(self.rng)/2 and width = 2
-        b = n.roll(rngarray, self.offset + iteration).reshape(len(self.rng) / 2, 2)
+        b = n.roll(rngarray, self.offset + iteration).reshape(len(self.rng) // 2, 2)
 
         try:
             # n.where(b == self.pairid)[0] returns a list of indices of the elements in b that equal pairid
@@ -289,7 +289,7 @@ class Shuffle(Pair):
         n.random.shuffle(rngarray)
 
         # convert to matrix with height len(self.rng)/2 and width 2
-        b = rngarray.reshape(len(self.rng) / 2, 2)
+        b = rngarray.reshape(len(self.rng) // 2, 2)
 
         try:
             res = b[n.where(b == self.pairid)[0][0]]
@@ -372,7 +372,7 @@ class Hwloc(Shuffle):
         hwlocid = 0
 
         subgroup = 10
-        for i in xrange(self.nr / subgroup):
+        for i in range(self.nr // subgroup):
             # restore rng
             self.rng = copy.deepcopy(self.origrng)
 
@@ -382,7 +382,7 @@ class Hwloc(Shuffle):
             self.filterrng()
 
             a = n.array(self.rng)
-            for j in xrange(subgroup):
+            for j in range(subgroup):
                 res[i * subgroup + j] = self.new(a, i * subgroup + j)
 
             hwlocid = (hwlocid + 1) % (len(hwlocs))

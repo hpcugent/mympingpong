@@ -112,14 +112,14 @@ class PingPongAnalysis(object):
         bottom, height = .1, .9
 
         COLUMNS = 3
-        tags = self.meta.keys()
+        tags = list(self.meta.keys())
         nrmeta = len(tags)
         while nrmeta % COLUMNS != 0:
             nrmeta += 1
             tags.append(None)
-        layout = n.array(tags).reshape(nrmeta / COLUMNS, COLUMNS)
+        layout = n.array(tags).reshape(nrmeta // COLUMNS, COLUMNS)
 
-        for r in range(nrmeta / COLUMNS):
+        for r in range(nrmeta // COLUMNS):
             for c in range(COLUMNS):
                 m = layout[r][c]
                 if not m or m not in meta:
@@ -202,7 +202,7 @@ class PingPongAnalysis(object):
 
         return coloredges
 
-    def overwritecolors(self, color, colors, begin=0, end=sys.maxint):
+    def overwritecolors(self, color, colors, begin=0, end=sys.maxsize):
         """will overwrite all elements in the colors array in interval [begin,end] with color"""
         self.log.debug("overwriting %s to %s with %s", begin, end, color)
         return [color if i >= begin and i < end else c for i, c in enumerate(colors)]

@@ -33,11 +33,11 @@ Pingpong related classes and tests, based on mympi
 from vsc.utils.generaloption import simple_option
 
 import array
-import time
 import datetime
 import os
 import signal
 import sys
+import time
 from itertools import permutations
 
 import h5py
@@ -85,7 +85,7 @@ class MyPingPong(object):
         name = self.comm.bcast(name, root=0)
 
         args = (directory, name, self.size, msg, self.nr, self.it, timestamp)
-        self.fn = '%s/PP%s-%03i-msg%07iB-nr%05i-it%05i-%s.h5' % args
+        self.fn = '%s/PP%s-%03d-msg%07dB-nr%05d-it%05d-%s.h5' % args
 
     def setpairmode(self, pairmode='shuffle', rngfilter=None, mapfilter=None):
         """set the pairmode, rngfilter and mapfilter for the pairgenerator """
@@ -102,7 +102,7 @@ class MyPingPong(object):
         rankaffinity = sched_getaffinity()
         self.log.debug("affinity pre-set: %s", rankaffinity)
 
-        cores = [i for i, j in enumerate(rankaffinity.cpus) if j == 1L]
+        cores = [i for i, j in enumerate(rankaffinity.cpus) if j == 1]
 
         topin = None
         for index, iterrank in enumerate(ranksonnode):
@@ -144,7 +144,7 @@ class MyPingPong(object):
 
     def makedata(self, l=1024):
         """create data with size l (in Bytes)"""
-        return array.array('c', '\0'*l)
+        return array.array('b', b'\0' * l)
 
     def makecpumap(self):
         """
@@ -285,7 +285,10 @@ class MyPingPong(object):
             except KeyError as _:
                 self.log.error("pair %s is not in permutation", key)
             if (-1 in key) or (-2 in key):
-                fail[self.rank][key[n.where(key > -1)[0][0]]] += 1
+                if key[0] > -1:
+                    fail[self.rank][key[0]] += 1
+                else:
+                    fail[self.rank][key[1]] += 1
 
         for k, (count, timings) in data.items():
             data[k] = (count, n.sum(timings)/count, n.std(timings))
@@ -394,12 +397,16 @@ class MyPingPong(object):
         else:
             f = h5py.File(filename, 'w')
 
-        for k, v in attributes.items():
+        for k, v in sorted(attributes.items()):
+            if v == {}:
+                # workaround for: TypeError: Object dtype dtype('O') has no native HDF5 equivalent
+                v = ''
             f.attrs[k] = v
             if self.rank == 0:
                 self.log.debug("added attribute %s: %s to data.attrs", k, v)
 
-        dataset = f.create_dataset('data', (self.size, self.size, len(data.values()[0])), 'f')
+        data_cnt = len(list(data.values())[0])
+        dataset = f.create_dataset('data', (self.size, self.size, data_cnt), 'f')
         STR_LEN = 64
         rankname = f.create_dataset('rankdata', (self.size, 2), dtype='S%s' % str(STR_LEN))
 
@@ -423,12 +430,22 @@ class MyPingPong(object):
         f.close()
 
     def fitstr(self, string, length):
-        return '{message: <{fill}}'.format(message=string[0:length], fill=length)
+        """Pad string value with spaces until it has specified length."""
+
+        msg = '{message: <{fill}}'.format(message=string[0:length], fill=length)
+
+        # encode('utf8') fixes "TypeError: No conversion path for dtype: dtype('<U64')"
+        # with older h5py versions when using Python 3, see https://github.com/h5py/h5py/issues/289
+        if sys.version_info > (3,):
+            msg = msg.encode('utf8')
+
+        return msg
+
 
 if __name__ == '__main__':
 
     options = {
-        'number': ('set the amount of samples that will be made', int, 'store', None, 'n'),
+        'number': ('set the amount of samples that will be made', int, 'store', 1000, 'n'),
         'messagesize': ('set the message size in Bytes', int, 'store', 1024, 'm'),
         'iterations': ('set the number of iterations', int, 'store', 20, 'i'),
         'groupmode': ('set the groupmode', str, 'store', None, 'g'),

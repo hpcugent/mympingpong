@@ -32,32 +32,26 @@ Setup for mympingpong
 
 import sys
 
-from vsc.install.shared_setup import action_target, sdw
+from vsc.install.shared_setup import action_target, kh, sdw
 
 PACKAGE = {
     'name': 'mympingpong',
-    'version': '0.8.0',
+    'version': '0.8.1',
     'install_requires': [
-        'vsc-base >= 2.4.16',
+        'vsc-install >= 0.17.1',
+        'vsc-base >= 3.1.4',
         'numpy >= 1.8.2',
         'matplotlib >= 1.3.1',
         'lxml',
         'h5py',
-        'mpi4py < 2.0.0',  # the patched one to run, for analysis, this is ok (and not used)
-    ],
-    # Workaround from
-    # https://github.com/numpy/numpy/issues/2434#issuecomment-65252402
-    # and
-    # https://github.com/h5py/h5py/issues/535#issuecomment-79158166
-    'setup_requires': [
-        'numpy >= 1.8.2',
+        'mpi4py',  # should be patched version, which includes support for timed pingpong
     ],
     'tests_require': [
         'mock',
         'nose',
     ],
-    'author': [sdw],
-    'maintainer': [sdw],
+    'author': [sdw, kh],
+    'maintainer': [sdw, kh],
 }
 
 if sys.version_info < (2, 7):
